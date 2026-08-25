@@ -3,7 +3,7 @@ using UnityEngine;
 namespace Crosswim.Runtime
 {
     /// <summary>
-    /// Air: low drag + weathercock nose into velocity. No vanilla ApplyAero.
+    /// Air: weathercock. Swim: level roll (dorsal / DockingPlace side = world up).
     /// </summary>
     internal static class CrosswimBallistic
     {
@@ -25,10 +25,16 @@ namespace Crosswim.Runtime
             rb.angularVelocity *= CrosswimConstants.BallisticAngVelDamp;
 
             if (rb.velocity.sqrMagnitude >= 4f)
-                AlignNose(rb, missile.transform, rb.velocity, dt, CrosswimConstants.BallisticAlignDegS);
+                AlignNose(rb, missile.transform, rb.velocity, dt, CrosswimConstants.BallisticAlignDegS, false);
         }
 
-        internal static void AlignNose(Rigidbody rb, Transform xform, Vector3 dir, float dt, float degPerSec)
+        internal static void AlignNose(
+            Rigidbody rb,
+            Transform xform,
+            Vector3 dir,
+            float dt,
+            float degPerSec,
+            bool levelRoll)
         {
             if (rb == null || xform == null || dt <= 0f)
                 return;
@@ -36,11 +42,22 @@ namespace Crosswim.Runtime
                 return;
 
             Vector3 n = dir.normalized;
-            Vector3 up = xform.up;
-            if (Mathf.Abs(Vector3.Dot(n, up)) > 0.92f)
+            Vector3 up;
+            if (levelRoll)
+            {
+                // Keep dorsal (DockingPlace / former DockingPort side) toward world up.
                 up = Vector3.up;
-            if (Mathf.Abs(Vector3.Dot(n, up)) > 0.92f)
-                up = xform.right;
+                if (Mathf.Abs(Vector3.Dot(n, up)) > 0.95f)
+                    up = Mathf.Abs(Vector3.Dot(n, Vector3.forward)) < 0.9f ? Vector3.forward : Vector3.right;
+            }
+            else
+            {
+                up = xform.up;
+                if (Mathf.Abs(Vector3.Dot(n, up)) > 0.92f)
+                    up = Vector3.up;
+                if (Mathf.Abs(Vector3.Dot(n, up)) > 0.92f)
+                    up = xform.right;
+            }
 
             Quaternion want = Quaternion.LookRotation(n, up);
             rb.MoveRotation(Quaternion.RotateTowards(rb.rotation, want, degPerSec * dt));

@@ -1,3 +1,4 @@
+using Crosswim;
 using UnityEngine;
 
 namespace Crosswim.Runtime
@@ -53,7 +54,7 @@ namespace Crosswim.Runtime
                 return;
 
             _elapsed += Time.deltaTime;
-            float frame = _elapsed * CrosswimCubeKeys.Fps;
+            float frame = _elapsed * CrosswimCubeKeys.Fps * CrosswimConstants.OpeningPlaybackRate;
             float last = CrosswimCubeKeys.FrameCount - 1;
             if (frame >= last)
             {

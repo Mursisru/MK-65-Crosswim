@@ -61,8 +61,14 @@ namespace Crosswim
 
         public const float SwimSpeedKmh = 550f;
         public const float SwimSpeedMps = SwimSpeedKmh / 3.6f;
-        public const float SwimThrustRampS = 2.2f;
-        public const float SwimTurnRateDeg = 180f;
+        // Splash: bleed, then SoftStep thrust. Guidance is nearly horizontal + soft depth PD.
+        public const float SwimEntryMaxMps = 40f;
+        public const float SwimCoastMps = 10f;
+        public const float SwimBleedMaxS = 6f;
+        public const float SwimBleedLinearDrag = 3200f;
+        public const float SwimBleedAlignDegS = 12f;
+        public const float SwimThrustRampS = 6f;
+        public const float SwimTurnRateDeg = 35f;
         public const float SwimDepthM = 6f;
         public const float WaterDensity = 1025f;
         public const float SwimCdArea = 0.006f;
@@ -70,16 +76,26 @@ namespace Crosswim
             0.5f * WaterDensity * SwimSpeedMps * SwimSpeedMps * SwimCdArea;
         public const float SwimSideDamp = 4.5f;
         public const float SwimHeaveDamp = 3.5f;
-        public const float SwimBuoyancyGain = 3.2f;
-        public const float SwimFinAuthority = 0.00045f;
-        public const float SwimMaxAngVelRad = 2.2f;
-        public const float SwimAlignDegS = 180f;
-        public const float SwimLinearDrag = 400f;
+        public const float SwimWorldHeaveDamp = 0f;
+        public const float SwimBodyHeaveDamp = 0f;
+        public const float SwimDepthKp = 0f;
+        public const float SwimDepthKd = 0f;
+        public const float SwimMaxHeaveAcc = 0f;
+        public const float SwimDepthPitchGain = 0f;
+        public const float SwimMaxPitch = 0.35f;
+        public const float SwimDirSmooth = 0f;
+        public const float SwimBuoyancyGain = 2.2f;
+        public const float SwimFinAuthority = 0.00055f;
+        public const float SwimMaxAngVelRad = 1.8f;
+        public const float SwimAlignDegS = 90f;
+        public const float SwimAngVelDamp = 1f;
+        // Cruise: quadratic only (prop sized for 550 km/h).
+        public const float SwimLinearDrag = 0f;
         public const float SwimAngularDrag = 2.5f;
+        public const float SwimMaxVerticalMps = 12f;
         public const float InterceptLeadMaxS = 8f;
         public const float TorpedoScanRangeM = 18000f;
         public const float ShipScanRangeM = 25000f;
-        public const float DetonateProximityM = 8f;
         public const float SoftKillTimeoutS = 240f;
         public const float WaterEntrySubmergeM = 1.2f;
 
@@ -99,6 +115,8 @@ namespace Crosswim
         public const float DockDestroyS = 12f;
         public const float OpeningFrames = 120f;
         public const float OpeningFpsFallback = 24f;
+        // Playback rate vs baked 24 fps (4× = ~1.25 s for 120 frames).
+        public const float OpeningPlaybackRate = 4f;
 
         public const float Pk = 0.55f;
         public const float FireIntervalS = 1.2f;

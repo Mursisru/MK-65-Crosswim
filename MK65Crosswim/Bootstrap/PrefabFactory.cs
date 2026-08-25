@@ -123,6 +123,12 @@ namespace Crosswim.Bootstrap
             DestroyExistingVisuals(host);
             if (StampOnMounted(host, visualPrefab) > 0)
                 HideStockRenderers(host);
+
+            // Free missile must not keep the pylon adapter ring.
+            Transform? vis = FindVisual(host.transform);
+            Missile? m = host.GetComponent<Missile>() ?? host.GetComponentInChildren<Missile>(true);
+            if (vis != null)
+                CrosswimDockEject.TryEject(m, vis);
         }
 
         private static int StampOnMounted(GameObject host, GameObject visualPrefab)
