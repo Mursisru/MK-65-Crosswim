@@ -58,28 +58,27 @@ namespace Crosswim.UnityBake
 
             string produced = Path.Combine(buildDir, OutputName);
             string alt = Path.Combine(buildDir, OutputName.ToLowerInvariant());
-            if (!File.Exists(produced) && File.Exists(alt))
-                File.Copy(alt, produced, true);
+            string src = File.Exists(alt) ? alt : produced;
 
             string pluginRes = Path.GetFullPath(Path.Combine(Application.dataPath, "..", "..", "MK65Crosswim", "Resources"));
             Directory.CreateDirectory(pluginRes);
-            if (File.Exists(produced))
+            if (File.Exists(src))
             {
-                File.Copy(produced, Path.Combine(pluginRes, OutputName), true);
+                File.Copy(src, Path.Combine(pluginRes, OutputName), true);
                 string binRel = Path.GetFullPath(Path.Combine(Application.dataPath, "..", "..", "MK65Crosswim", "bin", "Release"));
                 Directory.CreateDirectory(binRel);
-                File.Copy(produced, Path.Combine(binRel, OutputName), true);
+                File.Copy(src, Path.Combine(binRel, OutputName), true);
             }
 
             string deploy = @"C:\Program Files (x86)\Steam\steamapps\common\Nuclear Option\BepInEx\plugins\MK-65-Crosswim";
             Directory.CreateDirectory(deploy);
-            if (File.Exists(produced))
+            if (File.Exists(src))
             {
-                File.Copy(produced, Path.Combine(deploy, OutputName), true);
-                File.Copy(produced, Path.Combine(deploy, OutputName.ToLowerInvariant()), true);
+                File.Copy(src, Path.Combine(deploy, OutputName), true);
+                File.Copy(src, Path.Combine(deploy, OutputName.ToLowerInvariant()), true);
             }
 
-            Debug.Log($"Crosswim: built {produced}");
+            Debug.Log($"Crosswim: built {src}");
             AssetDatabase.Refresh();
         }
 
@@ -108,7 +107,9 @@ namespace Crosswim.UnityBake
                 return;
             }
 
-            ConfigureImporter(fbxPath);
+            // Legacy clips bake Blender-space TRS onto Cube* and stack two fins in one slot.
+            // None = same axis conversion as DockingPlace/empties (folded rest from the FBX).
+            ConfigureImporter(fbxPath, ModelImporterAnimationType.None);
             GameObject fbx = AssetDatabase.LoadAssetAtPath<GameObject>(fbxPath);
             if (fbx == null)
             {
@@ -184,6 +185,7 @@ namespace Crosswim.UnityBake
             }
 
             PoseClosed(root);
+            LogFinRest(root);
             AssetDatabase.SaveAssets();
             PrefabUtility.SaveAsPrefabAsset(root, $"{assetsRoot}/{PrefabName}.prefab");
             UnityEngine.Object.DestroyImmediate(root);
@@ -211,6 +213,40 @@ namespace Crosswim.UnityBake
 
         private static void PoseClosed(GameObject root)
         {
+            root.SetActive(true);
+            DisableAnimations(root);
+        }
+
+        private static void LogFinRest(GameObject root)
+        {
+            string[] names = { "Cube", "Cube.001", "Cube.002", "Cube.003", "OP", "OP.001", "OP.002", "OP.003", "DockingPlace" };
+            for (int i = 0; i < names.Length; i++)
+            {
+                Transform t = FindChild(root.transform, names[i]);
+                if (t == null)
+                {
+                    Debug.LogWarning("Crosswim bake missing " + names[i]);
+                    continue;
+                }
+                Vector3 p = t.localPosition;
+                Vector3 e = t.localRotation.eulerAngles;
+                Debug.Log($"Crosswim rest {names[i]} pos=({p.x:F4},{p.y:F4},{p.z:F4}) euler=({e.x:F1},{e.y:F1},{e.z:F1})");
+            }
+        }
+
+        private static Transform FindChild(Transform root, string name)
+        {
+            Transform[] all = root.GetComponentsInChildren<Transform>(true);
+            for (int i = 0; i < all.Length; i++)
+            {
+                if (all[i] != null && string.Equals(all[i].name, name, StringComparison.Ordinal))
+                    return all[i];
+            }
+            return null;
+        }
+
+        private static void DisableAnimations(GameObject root)
+        {
             Animation[] anims = root.GetComponentsInChildren<Animation>(true);
             for (int i = 0; i < anims.Length; i++)
             {
@@ -218,61 +254,9 @@ namespace Crosswim.UnityBake
                 if (a == null)
                     continue;
                 a.playAutomatically = false;
-                a.enabled = true;
                 a.Stop();
-                foreach (AnimationState st in a)
-                {
-                    if (st == null)
-                        continue;
-                    st.enabled = true;
-                    st.weight = 1f;
-                    st.time = 0f;
-                    st.speed = 0f;
-                }
-                a.Sample();
                 a.enabled = false;
             }
-
-            ApplyDumpClosedPose(root);
-        }
-
-        // Blender dump frame 0 → Unity FBX (pos -X,Z,Y; rot -90X * euler(x,-y,-z); scale 100).
-        private static void ApplyDumpClosedPose(GameObject root)
-        {
-            ApplyRest(root, "Cube", new Vector3(-1.69196f, 0.00028f, 0.68979f), new Vector3(0f, -1.57036f, 1.5708f));
-            ApplyRest(root, "Cube.001", new Vector3(-1.69196f, -0.68979f, 0.00028f), new Vector3(3.14159f, -0.00044f, -1.5708f));
-            ApplyRest(root, "Cube.002", new Vector3(-1.69196f, 0.00028f, -0.68979f), new Vector3(0f, 1.46512f, 1.5708f));
-            ApplyRest(root, "Cube.003", new Vector3(-1.69196f, 0.68979f, 0.00028f), new Vector3(0f, -0.10567f, 1.5708f));
-            ApplyRest(root, "OP", new Vector3(5.10305f, 0f, 0f), new Vector3(0f, -0.05262f, 0f));
-            ApplyRest(root, "OP.001", new Vector3(5.10305f, 0f, 0f), new Vector3(1.5708f, 0f, -0.05262f));
-            ApplyRest(root, "OP.002", new Vector3(5.10305f, 0f, 0f), new Vector3(0f, -0.05262f, 0f));
-            ApplyRest(root, "OP.003", new Vector3(5.10305f, 0f, 0f), new Vector3(1.5708f, 0f, -0.05262f));
-        }
-
-        private static void ApplyRest(GameObject root, string name, Vector3 blenderLoc, Vector3 blenderEulerRad)
-        {
-            Transform t = FindExact(root.transform, name);
-            if (t == null)
-                return;
-            t.localPosition = new Vector3(-blenderLoc.x, blenderLoc.z, blenderLoc.y);
-            Quaternion b = Quaternion.Euler(
-                blenderEulerRad.x * Mathf.Rad2Deg,
-                blenderEulerRad.y * Mathf.Rad2Deg,
-                blenderEulerRad.z * Mathf.Rad2Deg);
-            Quaternion mapped = new Quaternion(-b.x, -b.z, -b.y, b.w);
-            t.localRotation = Quaternion.Euler(-90f, 0f, 0f) * mapped;
-            t.localScale = Vector3.one * 100f;
-        }
-
-        private static Transform FindExact(Transform root, string name)
-        {
-            Transform[] all = root.GetComponentsInChildren<Transform>(true);
-            for (int i = 0; i < all.Length; i++)
-            {
-                if (all[i] != null && all[i].name == name)
-                    return all[i];
-            }
-            return null;
         }
 
         [Serializable]
@@ -381,7 +365,7 @@ namespace Crosswim.UnityBake
             return new string(chars);
         }
 
-        private static void ConfigureImporter(string fbxPath)
+        private static void ConfigureImporter(string fbxPath, ModelImporterAnimationType anim)
         {
             ModelImporter imp = AssetImporter.GetAtPath(fbxPath) as ModelImporter;
             if (imp == null)
@@ -395,7 +379,10 @@ namespace Crosswim.UnityBake
             imp.addCollider = false;
             imp.importLights = false;
             imp.importCameras = false;
-            imp.animationType = ModelImporterAnimationType.Legacy;
+            imp.animationType = anim;
+            imp.importAnimation = anim != ModelImporterAnimationType.None;
+            imp.resampleCurves = false;
+            imp.animationCompression = ModelImporterAnimationCompression.Off;
             // Keep Blender File Scale ×100 on transforms — do NOT flatten (scatters empties/meshes).
             imp.useFileScale = true;
             imp.globalScale = 1f;

@@ -80,6 +80,7 @@
     <ItemGroup>
       <NobpFiles Include="$(MSBuildProjectDirectory)\Resources\MK65Crosswim.nobp" Condition="Exists('$(MSBuildProjectDirectory)\Resources\MK65Crosswim.nobp')" />
       <NobpFiles Include="$(MSBuildProjectDirectory)\..\UnityBake\Build\MK65Crosswim.nobp" Condition="Exists('$(MSBuildProjectDirectory)\..\UnityBake\Build\MK65Crosswim.nobp')" />
+      <NobpFiles Include="$(MSBuildProjectDirectory)\..\UnityBake\Build\mk65crosswim.nobp" Condition="Exists('$(MSBuildProjectDirectory)\..\UnityBake\Build\mk65crosswim.nobp')" />
       <PreviewIcon Include="$(MSBuildProjectDirectory)\Resources\PreviewCrosswim.png" Condition="Exists('$(MSBuildProjectDirectory)\Resources\PreviewCrosswim.png')" />
       <TexFiles Include="$(MSBuildProjectDirectory)\..\UnityBake\Assets\MissilePack\Textures\Crosswim\*.*" Condition="Exists('$(MSBuildProjectDirectory)\..\UnityBake\Assets\MissilePack\Textures\Crosswim')" />
     </ItemGroup>

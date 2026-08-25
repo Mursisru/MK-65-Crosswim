@@ -10,6 +10,7 @@ UnityBake/Temp/
 UnityBake/Logs/
 UnityBake/Obj/
 UnityBake/Build/
+UnityBake/BakeLog*.txt
 .cursor/
 .cursorrules
 *.log

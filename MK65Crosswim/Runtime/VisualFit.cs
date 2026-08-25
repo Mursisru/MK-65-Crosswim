@@ -4,7 +4,7 @@ namespace Crosswim.Runtime
 {
     /// <summary>
     /// Hangar fit on inactive prefabs (localPositions only).
-    /// Pointed end → +Z (aircraft forward). Snap DockingPlace, then flush hull top to pylon.
+    /// Pointed end → +Z (aircraft forward). Snap DockingPlace to hardpoint — no hull flush.
     /// </summary>
     internal static class VisualFit
     {
@@ -27,7 +27,6 @@ namespace Crosswim.Runtime
             vis.localScale = new Vector3(s, s, s);
 
             SnapDockingPlace(vis);
-            FlushMeshTopToPylon(vis);
 
             CrosswimPlugin.ModLog?.LogInfo(
                 $"VisualFit scale={s:F4} span={span:F2} rot={vis.localRotation.eulerAngles} pos={vis.localPosition}");
@@ -93,65 +92,6 @@ namespace Crosswim.Runtime
             Vector3 local = LocalInVis(vis, attach);
             Vector3 inParent = vis.localRotation * Vector3.Scale(local, vis.localScale);
             vis.localPosition -= inParent;
-        }
-
-        /// <summary>
-        /// DockingPlace empty is above the hull in FBX — snap alone leaves a gap under the pylon.
-        /// Shift so mesh top (parent +Y) sits at the hardpoint.
-        /// </summary>
-        private static void FlushMeshTopToPylon(Transform vis)
-        {
-            if (vis.parent == null)
-                return;
-
-            Matrix4x4 visLocal = Matrix4x4.TRS(vis.localPosition, vis.localRotation, vis.localScale);
-            float maxY = float.MinValue;
-            bool any = false;
-
-            Renderer[] rs = vis.GetComponentsInChildren<Renderer>(true);
-            for (int i = 0; i < rs.Length; i++)
-            {
-                Renderer r = rs[i];
-                if (r == null || !r.enabled || !r.gameObject.activeSelf)
-                    continue;
-
-                Bounds b = r.localBounds;
-                Vector3[] corners =
-                {
-                    new Vector3(b.min.x, b.min.y, b.min.z),
-                    new Vector3(b.min.x, b.min.y, b.max.z),
-                    new Vector3(b.min.x, b.max.y, b.min.z),
-                    new Vector3(b.min.x, b.max.y, b.max.z),
-                    new Vector3(b.max.x, b.min.y, b.min.z),
-                    new Vector3(b.max.x, b.min.y, b.max.z),
-                    new Vector3(b.max.x, b.max.y, b.min.z),
-                    new Vector3(b.max.x, b.max.y, b.max.z)
-                };
-                for (int c = 0; c < corners.Length; c++)
-                {
-                    Vector3 inVis = CornerInVis(vis, r.transform, corners[c]);
-                    float y = visLocal.MultiplyPoint3x4(inVis).y;
-                    if (y > maxY)
-                        maxY = y;
-                    any = true;
-                }
-            }
-
-            if (!any)
-                return;
-            vis.localPosition += new Vector3(0f, -maxY, 0f);
-        }
-
-        private static Vector3 CornerInVis(Transform vis, Transform mesh, Vector3 localCorner)
-        {
-            Vector3 p = localCorner;
-            Transform? cur = mesh;
-            while (cur != null && cur != vis)
-            {
-                p = cur.localRotation * Vector3.Scale(p, cur.localScale) + cur.localPosition;
-                cur = cur.parent;
-            }
-            return p;
         }
 
         private static Vector3 LocalInVis(Transform vis, Transform t)

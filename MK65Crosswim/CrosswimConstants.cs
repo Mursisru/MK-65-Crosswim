@@ -37,7 +37,7 @@ namespace Crosswim
         public const float LengthM = 4.4f;
         public const float WidthM = 0.55f;
         public const float HeightM = 0.55f;
-        public const float VisualScaleMult = 1f;
+        public const float VisualScaleMult = 0.75f;
         public const float MountClearanceM = 0f;
         // Unity FBX File Scale: child localScale 100, localPosition still in meters.
         public const float FbxChildScale = 100f;

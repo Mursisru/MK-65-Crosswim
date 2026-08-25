@@ -150,10 +150,9 @@ namespace Crosswim.Bootstrap
             VisualMaterials.StripSceneJunk(vis);
             VisualMaterials.DestroySpawnedJunk(vis);
             VisualMaterials.MatchHostDrawState(vis, host);
-            CrosswimOpening.PoseClosed(vis.transform);
-            // Hide VLSB/Dock before fit so bounds and snap match what the player sees.
             CrosswimVisualParts.ApplyCarrier(vis.transform, shipContext, encyclopedia);
             VisualFit.Apply(vis.transform);
+            CrosswimOpening.PoseClosed(vis.transform);
             VisualShader.PrimeFrom(host);
             VisualMaterials.ApplyFbxLook(vis);
             return true;
