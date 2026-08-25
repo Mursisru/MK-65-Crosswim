@@ -124,6 +124,8 @@ namespace Crosswim
         public const float VlsbHeadingRadPerTick = 0.17453292f;
         // Look-ahead horizon = max(speed, 100) * this (same as AShM TerrainWaypoint).
         public const float VlsbLookaheadSpeedMult = 6f;
+        // Relative separation speed when VLSB mesh detaches (aft).
+        public const float VlsbShedSepMps = 4f;
         // Fallback if AShM VLSBooster not captured (real dry/fuel come from CrosswimAshmVls).
         public const float VlsbDryMassKg = 220f;
 

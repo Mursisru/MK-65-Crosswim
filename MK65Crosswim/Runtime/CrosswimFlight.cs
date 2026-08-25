@@ -320,32 +320,21 @@ namespace Crosswim.Runtime
         {
             CrosswimMotorFx.DestroyBooster(ref _boosterFx);
             if (_missile != null)
-                CrosswimMotorFx.SilenceStock(_missile);
-
-            if (_visual != null)
             {
-                Transform? vlsb = CrosswimVisualParts.FindExact(_visual, "VLSB");
-                if (vlsb == null)
-                    vlsb = CrosswimVisualParts.FindByAliases(_visual, CrosswimConstants.VlsbAliases);
-                if (vlsb != null)
-                {
-                    Vector3 vel = _rb != null ? _rb.velocity : Vector3.zero;
-                    CrosswimVisualParts.KillVlsbFxSubtree(vlsb);
-                    vlsb.SetParent(null, true);
-                    Rigidbody rb = vlsb.gameObject.GetComponent<Rigidbody>() ?? vlsb.gameObject.AddComponent<Rigidbody>();
-                    rb.mass = CrosswimAshmVls.DryMassKg;
-                    rb.useGravity = true;
-                    rb.isKinematic = false;
-                    rb.velocity = vel + Vector3.down * 2f;
-                    Object.Destroy(vlsb.gameObject, 10f);
-                }
-                CrosswimVisualParts.KillVlsbFx(_visual);
+                CrosswimMotorFx.SilenceStock(_missile);
+                _missile.boosterIsAttached = false;
             }
+
+            Vector3 vel = _rb != null ? _rb.velocity : Vector3.zero;
+            Vector3 aft = transform.forward;
+            CrosswimVlsbShed.Detach(_visual, vel, aft, CrosswimAshmVls.DryMassKg);
+
             if (_missile != null)
             {
                 CrosswimMass.Apply(_missile, CrosswimConstants.MassKg);
                 _missile.SetThrottle(0f);
                 CrosswimMotorFx.SilenceStock(_missile);
+                _missile.boosterIsAttached = false;
             }
             _phase = CrosswimPhase.Ballistic;
             _phaseT = 0f;
