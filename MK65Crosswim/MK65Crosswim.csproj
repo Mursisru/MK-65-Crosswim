@@ -1,0 +1,91 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <RootNamespace>Crosswim</RootNamespace>
+    <AssemblyName>MK65Crosswim</AssemblyName>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <WarningLevel>5</WarningLevel>
+    <Version>0.0.0</Version>
+    <AssemblyVersion>0.0.0.0</AssemblyVersion>
+    <FileVersion>0.0.0.0</FileVersion>
+    <OutputPath>bin\$(Configuration)\</OutputPath>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\PreviewCrosswim.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="0Harmony">
+      <HintPath>$(NuclearOptionRoot)\BepInEx\core\0Harmony.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="BepInEx">
+      <HintPath>$(NuclearOptionRoot)\BepInEx\core\BepInEx.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Blueprinter">
+      <HintPath>$(NuclearOptionRoot)\BepInEx\plugins\Blueprinter.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Assembly-CSharp">
+      <HintPath>$(NuclearOptionRoot)\NuclearOption_Data\Managed\Assembly-CSharp.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Mirage">
+      <HintPath>$(NuclearOptionRoot)\NuclearOption_Data\Managed\Mirage.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine">
+      <HintPath>$(NuclearOptionRoot)\NuclearOption_Data\Managed\UnityEngine.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>$(NuclearOptionRoot)\NuclearOption_Data\Managed\UnityEngine.CoreModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.PhysicsModule">
+      <HintPath>$(NuclearOptionRoot)\NuclearOption_Data\Managed\UnityEngine.PhysicsModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.AssetBundleModule">
+      <HintPath>$(NuclearOptionRoot)\NuclearOption_Data\Managed\UnityEngine.AssetBundleModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.ImageConversionModule">
+      <HintPath>$(NuclearOptionRoot)\NuclearOption_Data\Managed\UnityEngine.ImageConversionModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.ParticleSystemModule">
+      <HintPath>$(NuclearOptionRoot)\NuclearOption_Data\Managed\UnityEngine.ParticleSystemModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.AudioModule">
+      <HintPath>$(NuclearOptionRoot)\NuclearOption_Data\Managed\UnityEngine.AudioModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.AnimationModule">
+      <HintPath>$(NuclearOptionRoot)\NuclearOption_Data\Managed\UnityEngine.AnimationModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <Target Name="DeployToGame" AfterTargets="Build" Condition="'$(Configuration)' == 'Release'">
+    <MakeDir Directories="$(ModDeployDir)" />
+    <Copy SourceFiles="$(OutputPath)MK65Crosswim.dll" DestinationFolder="$(ModDeployDir)" SkipUnchangedFiles="false" />
+    <ItemGroup>
+      <NobpFiles Include="$(MSBuildProjectDirectory)\Resources\MK65Crosswim.nobp" Condition="Exists('$(MSBuildProjectDirectory)\Resources\MK65Crosswim.nobp')" />
+      <NobpFiles Include="$(MSBuildProjectDirectory)\..\UnityBake\Build\MK65Crosswim.nobp" Condition="Exists('$(MSBuildProjectDirectory)\..\UnityBake\Build\MK65Crosswim.nobp')" />
+      <PreviewIcon Include="$(MSBuildProjectDirectory)\Resources\PreviewCrosswim.png" Condition="Exists('$(MSBuildProjectDirectory)\Resources\PreviewCrosswim.png')" />
+      <TexFiles Include="$(MSBuildProjectDirectory)\..\UnityBake\Assets\MissilePack\Textures\Crosswim\*.*" Condition="Exists('$(MSBuildProjectDirectory)\..\UnityBake\Assets\MissilePack\Textures\Crosswim')" />
+    </ItemGroup>
+    <Copy SourceFiles="@(NobpFiles)" DestinationFolder="$(ModDeployDir)" SkipUnchangedFiles="false" Condition="'@(NobpFiles)' != ''" />
+    <Copy SourceFiles="@(PreviewIcon)" DestinationFolder="$(ModDeployDir)" SkipUnchangedFiles="false" Condition="'@(PreviewIcon)' != ''" />
+    <MakeDir Directories="$(ModDeployDir)\Textures" Condition="'@(TexFiles)' != ''" />
+    <Copy SourceFiles="@(TexFiles)" DestinationFolder="$(ModDeployDir)\Textures" SkipUnchangedFiles="false" Condition="'@(TexFiles)' != ''" />
+  </Target>
+</Project>

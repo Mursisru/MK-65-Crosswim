@@ -1,0 +1,741 @@
+{
+  "fps": 24,
+  "openingFrames": 120,
+  "objects": [
+    {
+      "name": "Camera",
+      "type": "CAMERA",
+      "parent": null,
+      "loc": [
+        1.08983,
+        -14.40941,
+        -0.05088
+      ],
+      "rot_e": [
+        1.5708,
+        -0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "Cube",
+      "type": "MESH",
+      "parent": null,
+      "loc": [
+        -1.69196,
+        0.00028,
+        0.68979
+      ],
+      "rot_e": [
+        0.0,
+        -1.57036,
+        1.5708
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "verts": 1480,
+      "mats": [
+        "Metal2",
+        "LightMaterial"
+      ],
+      "uv": [
+        "UVКарта"
+      ],
+      "action": "OpeningCube.001",
+      "action_frames": [
+        0,
+        120
+      ]
+    },
+    {
+      "name": "Cube.001",
+      "type": "MESH",
+      "parent": null,
+      "loc": [
+        -1.69196,
+        -0.68979,
+        0.00028
+      ],
+      "rot_e": [
+        3.14159,
+        -0.00044,
+        -1.5708
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "verts": 1480,
+      "mats": [
+        "Metal2",
+        "LightMaterial"
+      ],
+      "uv": [
+        "UVКарта"
+      ],
+      "action": "Cube.001Действие",
+      "action_frames": [
+        0,
+        120
+      ]
+    },
+    {
+      "name": "Cube.002",
+      "type": "MESH",
+      "parent": null,
+      "loc": [
+        -1.69196,
+        0.00028,
+        -0.68979
+      ],
+      "rot_e": [
+        0.0,
+        1.46512,
+        1.5708
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "verts": 1480,
+      "mats": [
+        "Metal2",
+        "LightMaterial"
+      ],
+      "uv": [
+        "UVКарта"
+      ],
+      "action": "Cube.002Действие",
+      "action_frames": [
+        0,
+        120
+      ]
+    },
+    {
+      "name": "Cube.003",
+      "type": "MESH",
+      "parent": null,
+      "loc": [
+        -1.69196,
+        0.68979,
+        0.00028
+      ],
+      "rot_e": [
+        0.0,
+        -0.10567,
+        1.5708
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "verts": 1480,
+      "mats": [
+        "Metal2",
+        "LightMaterial"
+      ],
+      "uv": [
+        "UVКарта"
+      ],
+      "action": "OpeningOPCube",
+      "action_frames": [
+        0,
+        120
+      ]
+    },
+    {
+      "name": "Decal",
+      "type": "EMPTY",
+      "parent": "Main",
+      "loc": [
+        3.90796,
+        -0.85516,
+        -0.03489
+      ],
+      "rot_e": [
+        1.5708,
+        -0.0,
+        0.0
+      ],
+      "scale": [
+        0.28694,
+        0.28694,
+        0.28694
+      ]
+    },
+    {
+      "name": "Decal 1",
+      "type": "EMPTY",
+      "parent": "Main",
+      "loc": [
+        3.91775,
+        1.06055,
+        -0.0865
+      ],
+      "rot_e": [
+        -1.5708,
+        -3.14159,
+        -0.0
+      ],
+      "scale": [
+        0.287,
+        0.287,
+        0.287
+      ]
+    },
+    {
+      "name": "DockingPlace",
+      "type": "EMPTY",
+      "parent": null,
+      "loc": [
+        2.01629,
+        0.0,
+        1.02967
+      ],
+      "rot_e": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "DockingPort",
+      "type": "MESH",
+      "parent": null,
+      "loc": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rot_e": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "verts": 148,
+      "mats": [
+        null,
+        "GlossyMetal",
+        "Metal"
+      ],
+      "uv": [
+        "UVКарта"
+      ]
+    },
+    {
+      "name": "Light",
+      "type": "LIGHT",
+      "parent": null,
+      "loc": [
+        4.07625,
+        1.00545,
+        5.90386
+      ],
+      "rot_e": [
+        0.65033,
+        0.05522,
+        1.86639
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "Main",
+      "type": "MESH",
+      "parent": null,
+      "loc": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rot_e": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "verts": 24722,
+      "mats": [
+        "GlossyMetal",
+        "Metal"
+      ],
+      "uv": [
+        "UVКарта"
+      ]
+    },
+    {
+      "name": "MainEngineEffectSpawn",
+      "type": "EMPTY",
+      "parent": null,
+      "loc": [
+        5.72479,
+        0.0,
+        0.0
+      ],
+      "rot_e": [
+        -0.0,
+        1.5708,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "OP",
+      "type": "MESH",
+      "parent": null,
+      "loc": [
+        5.10305,
+        0.0,
+        0.0
+      ],
+      "rot_e": [
+        0.0,
+        -0.05262,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "verts": 576,
+      "mats": [
+        "GlossyMetal"
+      ],
+      "uv": [
+        "UVКарта"
+      ]
+    },
+    {
+      "name": "OP.001",
+      "type": "MESH",
+      "parent": null,
+      "loc": [
+        5.10305,
+        0.0,
+        0.0
+      ],
+      "rot_e": [
+        1.5708,
+        -0.0,
+        -0.05262
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "verts": 576,
+      "mats": [
+        "GlossyMetal"
+      ],
+      "uv": [
+        "UVКарта"
+      ]
+    },
+    {
+      "name": "OP.002",
+      "type": "MESH",
+      "parent": null,
+      "loc": [
+        5.10305,
+        0.0,
+        0.0
+      ],
+      "rot_e": [
+        0.0,
+        -0.05262,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "verts": 576,
+      "mats": [
+        "GlossyMetal"
+      ],
+      "uv": [
+        "UVКарта"
+      ]
+    },
+    {
+      "name": "OP.003",
+      "type": "MESH",
+      "parent": null,
+      "loc": [
+        5.10305,
+        0.0,
+        0.0
+      ],
+      "rot_e": [
+        1.5708,
+        -0.0,
+        -0.05262
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "verts": 576,
+      "mats": [
+        "GlossyMetal"
+      ],
+      "uv": [
+        "UVКарта"
+      ]
+    },
+    {
+      "name": "VLSB",
+      "type": "MESH",
+      "parent": null,
+      "loc": [
+        -1.97145,
+        0.0,
+        0.0
+      ],
+      "rot_e": [
+        -1.5708,
+        -0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "verts": 2498,
+      "mats": [
+        "GlossyMetal",
+        "Metal"
+      ],
+      "uv": [
+        "UVКарта"
+      ]
+    },
+    {
+      "name": "VLSBEngineEffectsSpawn",
+      "type": "EMPTY",
+      "parent": null,
+      "loc": [
+        9.00893,
+        0.0,
+        0.0
+      ],
+      "rot_e": [
+        -0.0,
+        1.5708,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "VLSBEngineEffectsSpawn2",
+      "type": "EMPTY",
+      "parent": null,
+      "loc": [
+        9.07408,
+        -0.49439,
+        0.39736
+      ],
+      "rot_e": [
+        -0.0,
+        1.5708,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "VLSBEngineEffectsSpawn3",
+      "type": "EMPTY",
+      "parent": null,
+      "loc": [
+        9.07408,
+        0.49439,
+        0.39736
+      ],
+      "rot_e": [
+        -0.0,
+        1.5708,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "VLSBEngineEffectsSpawn4",
+      "type": "EMPTY",
+      "parent": null,
+      "loc": [
+        9.07408,
+        0.49439,
+        -0.39736
+      ],
+      "rot_e": [
+        -0.0,
+        1.5708,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "VLSBEngineEffectsSpawn5",
+      "type": "EMPTY",
+      "parent": null,
+      "loc": [
+        9.07408,
+        -0.49439,
+        -0.39736
+      ],
+      "rot_e": [
+        -0.0,
+        1.5708,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    }
+  ],
+  "materials": [
+    {
+      "name": "GlossyMetal",
+      "use_nodes": true,
+      "colR": 0.8,
+      "colG": 0.8,
+      "colB": 0.8,
+      "colA": 1.0,
+      "metallic": 0.25909,
+      "roughness": 0.41364,
+      "albedoTex": {
+        "from": "Группа",
+        "type": "GROUP"
+      },
+      "metallicTex": null,
+      "roughnessTex": null,
+      "normalTex": null,
+      "mix": []
+    },
+    {
+      "name": "LightMaterial",
+      "use_nodes": true,
+      "colR": 0.7991,
+      "colG": 0.49102,
+      "colB": 0.0,
+      "colA": 1.0,
+      "metallic": 0.0,
+      "roughness": 0.5,
+      "albedoTex": null,
+      "metallicTex": null,
+      "roughnessTex": null,
+      "normalTex": null,
+      "mix": []
+    },
+    {
+      "name": "Metal",
+      "use_nodes": true,
+      "colR": 0.8,
+      "colG": 0.8,
+      "colB": 0.8,
+      "colA": 1.0,
+      "metallic": 0.0,
+      "roughness": 0.5,
+      "albedoTex": {
+        "from": "Текстура шума",
+        "type": "TEX_NOISE"
+      },
+      "metallicTex": {
+        "from": "Текстура шума",
+        "type": "TEX_NOISE"
+      },
+      "roughnessTex": {
+        "from": "Текстура шума",
+        "type": "TEX_NOISE"
+      },
+      "normalTex": {
+        "from": "Текстура шума",
+        "type": "TEX_NOISE"
+      },
+      "mix": []
+    },
+    {
+      "name": "Metal2",
+      "use_nodes": true,
+      "colR": 0.15763,
+      "colG": 0.15763,
+      "colB": 0.15763,
+      "colA": 1.0,
+      "metallic": 0.86818,
+      "roughness": 0.5,
+      "albedoTex": null,
+      "metallicTex": null,
+      "roughnessTex": {
+        "from": "Текстура шума",
+        "type": "TEX_NOISE"
+      },
+      "normalTex": null,
+      "mix": []
+    }
+  ],
+  "images": [
+    {
+      "name": "GlossyMetal AO",
+      "path": "C:\\Users\\at747_loyuw9y\\OneDrive\\Документы\\Blender\\MissilePack\\textures\\GlossyMetal AO.png",
+      "size": [
+        2048,
+        2048
+      ],
+      "packed": true,
+      "users": 1,
+      "copied": "C:\\Users\\at747_loyuw9y\\source\\repos\\MK-65-Crosswim\\UnityBake\\Assets\\MissilePack\\Textures\\Crosswim\\packed\\GlossyMetal_AO.png"
+    },
+    {
+      "name": "grunge_style_background_with_scratched_texture_overlay_1506.jpg",
+      "path": "C:\\Users\\at747_loyuw9y\\OneDrive\\Документы\\Blender\\MissilePack\\textures\\grunge_style_background_with_scratched_texture_overlay_1506.jpg",
+      "size": [
+        5001,
+        3543
+      ],
+      "packed": true,
+      "users": 0,
+      "copied": "C:\\Users\\at747_loyuw9y\\source\\repos\\MK-65-Crosswim\\UnityBake\\Assets\\MissilePack\\Textures\\Crosswim\\packed\\grunge_style_background_with_scratched_texture_overlay_1506_jpg"
+    },
+    {
+      "name": "IST-100TextTexture-no-bg-preview (carve.photos).png",
+      "path": "C:\\Users\\at747_loyuw9y\\OneDrive\\Документы\\Blender\\MissilePack\\textures\\IST-100TextTexture-no-bg-preview (carve.photos).png",
+      "size": [
+        1017,
+        239
+      ],
+      "packed": true,
+      "users": 2,
+      "copied": "C:\\Users\\at747_loyuw9y\\source\\repos\\MK-65-Crosswim\\UnityBake\\Assets\\MissilePack\\Textures\\Crosswim\\packed\\IST-100TextTexture-no-bg-preview__carve_photos__png"
+    },
+    {
+      "name": "Mask (Solid Color 2) 1",
+      "path": "C:\\Users\\at747_loyuw9y\\OneDrive\\Документы\\Blender\\MissilePack\\textures\\Mask (Solid Color 2) 1.png",
+      "size": [
+        2048,
+        2048
+      ],
+      "packed": true,
+      "users": 1,
+      "copied": "C:\\Users\\at747_loyuw9y\\source\\repos\\MK-65-Crosswim\\UnityBake\\Assets\\MissilePack\\Textures\\Crosswim\\packed\\Mask__Solid_Color_2__1.png"
+    },
+    {
+      "name": "Mask (Solid Color 3)",
+      "path": "C:\\Users\\at747_loyuw9y\\OneDrive\\Документы\\Blender\\MissilePack\\textures\\Mask (Solid Color 3).png",
+      "size": [
+        2048,
+        2048
+      ],
+      "packed": true,
+      "users": 1,
+      "copied": "C:\\Users\\at747_loyuw9y\\source\\repos\\MK-65-Crosswim\\UnityBake\\Assets\\MissilePack\\Textures\\Crosswim\\packed\\Mask__Solid_Color_3_.png"
+    },
+    {
+      "name": "Mask (Solid Color 4)",
+      "path": "C:\\Users\\at747_loyuw9y\\OneDrive\\Документы\\Blender\\MissilePack\\textures\\Mask (Solid Color 4).png",
+      "size": [
+        4096,
+        4096
+      ],
+      "packed": true,
+      "users": 2,
+      "copied": "C:\\Users\\at747_loyuw9y\\source\\repos\\MK-65-Crosswim\\UnityBake\\Assets\\MissilePack\\Textures\\Crosswim\\packed\\Mask__Solid_Color_4_.png"
+    },
+    {
+      "name": "Mask (Solid Color)",
+      "path": "C:\\Users\\at747_loyuw9y\\OneDrive\\Документы\\Blender\\MissilePack\\textures\\Mask (Solid Color).png",
+      "size": [
+        2048,
+        2048
+      ],
+      "packed": true,
+      "users": 1,
+      "copied": "C:\\Users\\at747_loyuw9y\\source\\repos\\MK-65-Crosswim\\UnityBake\\Assets\\MissilePack\\Textures\\Crosswim\\packed\\Mask__Solid_Color_.png"
+    },
+    {
+      "name": "Mask (Solid Color) 1",
+      "path": "C:\\Users\\at747_loyuw9y\\OneDrive\\Документы\\Blender\\MissilePack\\textures\\Mask (Solid Color) 1.png",
+      "size": [
+        2048,
+        2048
+      ],
+      "packed": true,
+      "users": 1,
+      "copied": "C:\\Users\\at747_loyuw9y\\source\\repos\\MK-65-Crosswim\\UnityBake\\Assets\\MissilePack\\Textures\\Crosswim\\packed\\Mask__Solid_Color__1.png"
+    },
+    {
+      "name": "Render Result",
+      "path": "",
+      "size": [
+        0,
+        0
+      ],
+      "packed": false,
+      "users": 1
+    },
+    {
+      "name": "Viewer Node",
+      "path": "",
+      "size": [
+        256,
+        256
+      ],
+      "packed": false,
+      "users": 1
+    }
+  ]
+}

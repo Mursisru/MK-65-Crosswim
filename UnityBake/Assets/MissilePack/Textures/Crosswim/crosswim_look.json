@@ -1,0 +1,62 @@
+{
+  "fps": 24,
+  "openingFrames": 120,
+  "mats": [
+    {
+      "name": "GlossyMetal",
+      "colR": 1.0,
+      "colG": 1.0,
+      "colB": 1.0,
+      "colA": 1.0,
+      "metallic": 0.0,
+      "roughness": 0.62,
+      "albedo": "GlossyMetal_Color.png",
+      "occlusion": "",
+      "roughnessMap": "",
+      "normalMap": "",
+      "baseColorLinked": 1
+    },
+    {
+      "name": "LightMaterial",
+      "colR": 0.7991,
+      "colG": 0.49102,
+      "colB": 0.0,
+      "colA": 1.0,
+      "metallic": 0.0,
+      "roughness": 0.5,
+      "albedo": "",
+      "occlusion": "",
+      "roughnessMap": "",
+      "normalMap": "",
+      "baseColorLinked": 0
+    },
+    {
+      "name": "Metal",
+      "colR": 0.8,
+      "colG": 0.8,
+      "colB": 0.8,
+      "colA": 1.0,
+      "metallic": 0.75,
+      "roughness": 0.45,
+      "albedo": "Metal_Albedo.png",
+      "occlusion": "",
+      "roughnessMap": "Metal_Roughness.png",
+      "normalMap": "Metal_Normal.png",
+      "baseColorLinked": 1
+    },
+    {
+      "name": "Metal2",
+      "colR": 0.15763,
+      "colG": 0.15763,
+      "colB": 0.15763,
+      "colA": 1.0,
+      "metallic": 0.55,
+      "roughness": 0.55,
+      "albedo": "",
+      "occlusion": "",
+      "roughnessMap": "",
+      "normalMap": "",
+      "baseColorLinked": 0
+    }
+  ]
+}
