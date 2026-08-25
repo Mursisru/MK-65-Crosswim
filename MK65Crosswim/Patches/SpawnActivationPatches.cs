@@ -151,13 +151,18 @@ namespace Crosswim.Patches
     [HarmonyPatch(typeof(MissileLauncher), nameof(MissileLauncher.Fire))]
     internal static class MissileLauncherFirePatch
     {
-        private static void Prefix(MissileLauncher __instance)
+        private static bool Prefix(MissileLauncher __instance)
         {
             if (__instance == null || CrosswimBootstrap.Definition == null)
-                return;
-            if (__instance.missile != CrosswimBootstrap.Definition)
-                return;
+                return true;
+            if (__instance.missile != CrosswimBootstrap.Definition &&
+                __instance.GetComponent<CrosswimLauncherTag>() == null)
+                return true;
+            // Ship VLS: only CrosswimShipDefense.TryFire (blocks FireControl / hold-to-dump).
+            if (__instance.GetComponent<CrosswimLauncherTag>() != null && CrosswimShipDefense.FireGate <= 0)
+                return false;
             CrosswimSpawnGate.NoteFire();
+            return true;
         }
     }
 }

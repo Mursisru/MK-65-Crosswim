@@ -157,18 +157,26 @@ namespace Crosswim.Bootstrap
             if (parent == null || visualPrefab == null)
                 return false;
 
-            GameObject vis = UnityEngine.Object.Instantiate(visualPrefab, parent, false);
-            vis.name = CrosswimConstants.VisualRootName;
-            vis.hideFlags = HideFlags.None;
-            vis.SetActive(true);
-            VisualMaterials.StripSceneJunk(vis);
-            VisualMaterials.DestroySpawnedJunk(vis);
+            GameObject? vis = CrosswimVisualCache.InstantiatePrepared(parent);
+            if (vis == null)
+            {
+                vis = UnityEngine.Object.Instantiate(visualPrefab, parent, false);
+                vis.name = CrosswimConstants.VisualRootName;
+                vis.hideFlags = HideFlags.None;
+                vis.SetActive(true);
+                VisualMaterials.StripSceneJunk(vis);
+                VisualMaterials.DestroySpawnedJunk(vis);
+                VisualMaterials.MatchHostDrawState(vis, host);
+                CrosswimVisualParts.ApplyCarrier(vis.transform, shipContext, encyclopedia);
+                VisualFit.Apply(vis.transform);
+                CrosswimOpening.PoseClosed(vis.transform);
+                VisualShader.PrimeFrom(host);
+                VisualMaterials.ApplyFbxLook(vis);
+                return true;
+            }
+
             VisualMaterials.MatchHostDrawState(vis, host);
             CrosswimVisualParts.ApplyCarrier(vis.transform, shipContext, encyclopedia);
-            VisualFit.Apply(vis.transform);
-            CrosswimOpening.PoseClosed(vis.transform);
-            VisualShader.PrimeFrom(host);
-            VisualMaterials.ApplyFbxLook(vis);
             return true;
         }
 
@@ -181,9 +189,22 @@ namespace Crosswim.Bootstrap
             {
                 if (rs[i] == null || IsVisualRoot(rs[i].transform))
                     continue;
-                if (rs[i] is ParticleSystemRenderer)
-                    continue;
                 rs[i].enabled = false;
+            }
+
+            // Stock AShM motor PS must not keep looping after Claim (Motor.Activate race).
+            ParticleSystem[] ps = root.GetComponentsInChildren<ParticleSystem>(true);
+            for (int i = 0; i < ps.Length; i++)
+            {
+                ParticleSystem p = ps[i];
+                if (p == null || IsVisualRoot(p.transform))
+                    continue;
+                string n = p.gameObject.name ?? string.Empty;
+                if (n.StartsWith("CrosswimExhaust", StringComparison.OrdinalIgnoreCase) ||
+                    n.StartsWith("CrosswimBooster", StringComparison.OrdinalIgnoreCase))
+                    continue;
+                p.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+                p.gameObject.SetActive(false);
             }
         }
 
@@ -303,7 +324,7 @@ namespace Crosswim.Bootstrap
             dst.boresight = src.boresight;
             dst.laserGuided = false;
             dst.missile = false;
-            dst.bomb = true;
+            dst.bomb = false;
             dst.glideBomb = false;
             dst.gun = false;
             dst.overHorizon = false;

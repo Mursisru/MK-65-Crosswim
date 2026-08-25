@@ -1,6 +1,7 @@
 using HarmonyLib;
 using Crosswim.Bootstrap;
 using Crosswim.Runtime;
+using UnityEngine;
 
 namespace Crosswim.Patches
 {
@@ -44,8 +45,26 @@ namespace Crosswim.Patches
             if (!CrosswimBootstrap.IsOurMissile(__instance))
                 return true;
             if (CrosswimDetonateGate.Allow || CrosswimDetonateGate.CombatDepth > 0)
+            {
+                CrosswimShellPrep.EnsureBlastYield(__instance);
+                CrosswimWarheadFx.Ensure(__instance);
                 return true;
+            }
             return false;
+        }
+    }
+
+    [HarmonyPatch(typeof(Missile.Warhead), nameof(Missile.Warhead.Detonate))]
+    internal static class WarheadDetonateYieldPatch
+    {
+        private static void Prefix(Rigidbody rb, ref float blastYield)
+        {
+            if (rb == null)
+                return;
+            Missile? m = rb.GetComponent<Missile>() ?? rb.GetComponentInParent<Missile>();
+            if (m == null || !CrosswimBootstrap.IsOurMissile(m))
+                return;
+            blastYield = CrosswimConstants.BlastYieldKg;
         }
     }
 

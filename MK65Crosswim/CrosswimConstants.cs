@@ -49,18 +49,24 @@ namespace Crosswim
 
         // Swim exhaust on empties (AGM-68-class plume; empty localScale 100).
         public const float FxWorldScaleM = 0.48f;
+        public const float FxBoosterWorldScaleM = 1.15f;
         public const float FxAftNudgeM = 0.08f;
+        public const float FxBoosterAftNudgeM = 0.15f;
         public const float FxMaxStartSize = 0.35f;
+        public const float FxBoosterMaxStartSize = 0.85f;
         // Unity FBX File Scale: child localScale 100, localPosition still in meters.
         public const float FbxChildScale = 100f;
 
-        public const float MassKg = 500f;
-        public const float BlastYieldKg = 100f;
+        // Match AShM-300 class body (~encyclopedia / wiki); VLSB dry+fuel added at ship loft.
+        public const float MassKg = 600f;
+        public const float BlastYieldKg = 70f;
         public const float Cost = 2.4f;
         public const float RadarSize = 0.22f;
 
         public const float SwimSpeedKmh = 550f;
         public const float SwimSpeedMps = SwimSpeedKmh / 3.6f;
+        // Underwater motor envelope only (HUD / softkill — air ballistic ignored).
+        public const float SwimFuelRangeM = 15000f;
         // Splash: bleed, then SoftStep thrust. Guidance is nearly horizontal + soft depth PD.
         public const float SwimEntryMaxMps = 40f;
         public const float SwimCoastMps = 10f;
@@ -96,19 +102,36 @@ namespace Crosswim
         public const float InterceptLeadMaxS = 8f;
         public const float TorpedoScanRangeM = 18000f;
         public const float ShipScanRangeM = 25000f;
-        public const float SoftKillTimeoutS = 240f;
+        public const float SoftKillTimeoutS = SwimFuelRangeM / SwimSpeedMps + 120f;
         public const float WaterEntrySubmergeM = 1.2f;
 
         public const float BallisticDrag = 0.01f;
         public const float BallisticAngularDrag = 18f;
-        public const float BallisticAlignDegS = 220f;
+        public const float BallisticAlignDegS = 90f;
         public const float BallisticMaxAngVelRad = 1.2f;
         public const float BallisticAngVelDamp = 0.82f;
 
-        public const float VlsbLoftAltM = 220f;
-        public const float VlsbThrustMps2 = 38f;
-        public const float VlsbMaxTimeS = 8f;
-        public const float VlsbDryMassKg = 80f;
+        // Ship VLS: AShM VLSBooster burn + TerrainWaypoint-style skim + g-limited velocity bend.
+        public const float VlsbKickTimeS = 2.2f;
+        public const float VlsbCruiseAltM = 18f;
+        public const float VlsbMinAltM = 10f;
+        public const float VlsbShedRangeM = 2500f;
+        public const float VlsbAimShortM = 2000f;
+        public const float VlsbMissAlignDot = 0.35f;
+        // Soften captured AShM booster thrust (was overspeeding Crosswim stack).
+        public const float VlsbThrustScale = 0.55f;
+        // OpticalSeekerCruiseMissile.TerrainWaypoint: RotateTowards(…, 0.1745 rad) per tick.
+        public const float VlsbHeadingRadPerTick = 0.17453292f;
+        // Look-ahead horizon = max(speed, 100) * this (same as AShM TerrainWaypoint).
+        public const float VlsbLookaheadSpeedMult = 6f;
+        // Fallback if AShM VLSBooster not captured (real dry/fuel come from CrosswimAshmVls).
+        public const float VlsbDryMassKg = 220f;
+
+        /*
+         * Offline reach budget — AShM burn (~8 s typical) + 15 km swim → keep 21 km perimeter.
+         * Actual burn/thrust/mass from CrosswimAshmVls at bootstrap.
+         */
+        public const float ShipEngageRangeM = 21000f;
 
         public const float DockEjectSpeed = 14f;
         public const float DockMassKg = 12f;
@@ -119,9 +142,18 @@ namespace Crosswim
         public const float OpeningPlaybackRate = 4f;
 
         public const float Pk = 0.55f;
-        public const float FireIntervalS = 1.2f;
+        public const float FireIntervalS = 0.5f;
         public const float AiMinRangeM = 400f;
-        public const float AiMaxRangeM = 28000f;
+        public const float AiMaxRangeM = SwimFuelRangeM;
+        // Dynamo/Argus VLS fire cadence.
+        public const float ShipScanIntervalS = 0.5f;
+        // Intercept underwater missiles (one live Crosswim per wet target).
+        public const float ShipTorpFireIntervalS = 6f;
+        // Anti-ship: one shot every 45 s while a hostile ship is in perimeter.
+        public const float ShipShipFireIntervalS = 45f;
+        public const int ShipMaxInboundPerMissile = 1;
+        public const int ShipVlsAmmo = 18;
+        public const float ShipShipMinRangeM = 500f;
 
         // DockingPort = mesh ring (hide on ship). DockingPlace = snap empty — never hide via this list.
         public static readonly string[] DockAliases = { "DockingPort" };

@@ -1,34 +1,43 @@
 using System;
-using System.Reflection;
+using System.Collections.Generic;
+using Crosswim.Runtime;
+using HarmonyLib;
 using UnityEngine;
 
 namespace Crosswim.Bootstrap
 {
-    /// <summary>Add-only clone of a Dynamo/Argus MissileLauncher pointing at Crosswim. Does not mutate donor missile SO.</summary>
+    /// <summary>
+    /// Dynamo/Argus: strip broken prefab VLS mutations, attach runtime defense only.
+    /// Never rewrite Turret.weaponStations (that wiped vanilla loadout).
+    /// </summary>
     internal static class ShipLauncherInjector
     {
-        private static readonly FieldInfo? MissileField =
-            typeof(MissileLauncher).GetField("missile", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+        private static readonly System.Reflection.FieldInfo? TurretStationsField =
+            AccessTools.Field(typeof(Turret), "weaponStations");
 
         internal static void InjectDynamoArgus(Encyclopedia enc, MissileDefinition? ours)
         {
-            if (enc?.ships == null || ours == null)
+            if (enc?.ships == null || ours == null || CrosswimBootstrap.Info == null)
                 return;
 
-            int added = 0;
+            int ships = 0;
             foreach (ShipDefinition ship in enc.ships)
             {
                 if (ship?.unitPrefab == null || !IsTargetShip(ship))
                     continue;
-                added += InjectOnShipPrefab(ship.unitPrefab, ours, ship.unitName ?? ship.jsonKey);
+                RepairPrefab(ship.unitPrefab);
+                if (ship.unitPrefab.GetComponent<CrosswimShipDefense>() == null)
+                    ship.unitPrefab.AddComponent<CrosswimShipDefense>();
+                ships++;
             }
-            CrosswimPlugin.ModLog?.LogInfo($"ShipLauncherInjector: cloned {added} launcher(s) on Dynamo/Argus.");
+            CrosswimPlugin.ModLog?.LogInfo(
+                $"ShipLauncherInjector: runtime Crosswim VLS x{CrosswimConstants.ShipVlsAmmo} marked on {ships} Dynamo/Argus (turrets untouched).");
         }
 
-        private static bool IsTargetShip(ShipDefinition ship)
-        {
-            return NameHasToken(ship.unitName) || NameHasToken(ship.jsonKey) || NameHasToken(ship.unitPrefab != null ? ship.unitPrefab.name : null);
-        }
+        private static bool IsTargetShip(ShipDefinition ship) =>
+            NameHasToken(ship.unitName) ||
+            NameHasToken(ship.jsonKey) ||
+            NameHasToken(ship.unitPrefab != null ? ship.unitPrefab.name : null);
 
         private static bool NameHasToken(string? s)
         {
@@ -42,37 +51,51 @@ namespace Crosswim.Bootstrap
             return false;
         }
 
-        private static int InjectOnShipPrefab(GameObject prefab, MissileDefinition ours, string shipTag)
+        /// <summary>Remove our cloned launchers and any Crosswim stations we stuffed into Turret arrays.</summary>
+        private static void RepairPrefab(GameObject prefab)
         {
-            MissileLauncher[] launchers = prefab.GetComponentsInChildren<MissileLauncher>(true);
-            int added = 0;
-            for (int i = 0; i < launchers.Length; i++)
+            CrosswimLauncherTag[] tags = prefab.GetComponentsInChildren<CrosswimLauncherTag>(true);
+            for (int i = 0; i < tags.Length; i++)
             {
-                MissileLauncher src = launchers[i];
-                if (src == null)
-                    continue;
-                if (src.GetComponent<CrosswimLauncherTag>() != null)
-                    continue;
-
-                GameObject cloneGo = UnityEngine.Object.Instantiate(src.gameObject, src.transform.parent);
-                cloneGo.name = src.gameObject.name + "_MK65";
-                CrosswimLauncherTag tag = cloneGo.AddComponent<CrosswimLauncherTag>();
-                tag.hideFlags = HideFlags.None;
-
-                MissileLauncher clone = cloneGo.GetComponent<MissileLauncher>();
-                if (clone == null)
-                {
-                    UnityEngine.Object.DestroyImmediate(cloneGo);
-                    continue;
-                }
-                if (MissileField != null)
-                    MissileField.SetValue(clone, ours);
-                else
-                    clone.missile = ours;
-                added++;
-                CrosswimPlugin.ModLog?.LogInfo($"Ship launcher clone on '{shipTag}' from '{src.gameObject.name}'.");
+                if (tags[i] != null)
+                    UnityEngine.Object.DestroyImmediate(tags[i].gameObject);
             }
-            return added;
+
+            Transform[] all = prefab.GetComponentsInChildren<Transform>(true);
+            for (int i = all.Length - 1; i >= 0; i--)
+            {
+                Transform t = all[i];
+                if (t == null)
+                    continue;
+                if (t.name.IndexOf("MK65_Crosswim", StringComparison.OrdinalIgnoreCase) >= 0)
+                    UnityEngine.Object.DestroyImmediate(t.gameObject);
+            }
+
+            Turret[] turrets = prefab.GetComponentsInChildren<Turret>(true);
+            for (int t = 0; t < turrets.Length; t++)
+            {
+                Turret turret = turrets[t];
+                if (turret == null || TurretStationsField == null)
+                    continue;
+                if (TurretStationsField.GetValue(turret) is not WeaponStation[] stations || stations.Length == 0)
+                    continue;
+
+                List<WeaponStation> keep = new List<WeaponStation>(stations.Length);
+                bool removed = false;
+                for (int i = 0; i < stations.Length; i++)
+                {
+                    WeaponStation? ws = stations[i];
+                    if (ws != null && CrosswimBootstrap.IsOurInfo(ws.WeaponInfo))
+                    {
+                        removed = true;
+                        continue;
+                    }
+                    if (ws != null)
+                        keep.Add(ws);
+                }
+                if (removed)
+                    TurretStationsField.SetValue(turret, keep.ToArray());
+            }
         }
     }
 

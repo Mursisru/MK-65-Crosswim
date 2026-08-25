@@ -91,6 +91,7 @@ namespace Crosswim.Runtime
                 missile.gameObject.AddComponent<CrosswimTag>();
 
             missile.SetThrottle(0f);
+            CrosswimMotorFx.SilenceStock(missile);
             CrosswimShellPrep.Prepare(missile);
             CrosswimMass.Apply(missile, CrosswimConstants.MassKg);
 
@@ -117,6 +118,10 @@ namespace Crosswim.Runtime
             if (missile == null)
                 return;
             NobpContent.TryLoad();
+            if (NobpContent.VisualPrefab != null)
+                CrosswimVisualCache.Warm();
+            if (missile == null)
+                return;
             if (NobpContent.VisualPrefab != null)
                 PrefabFactory.StampVisualLive(missile.gameObject, NobpContent.VisualPrefab);
             PrefabFactory.HideStockRenderers(missile.gameObject);

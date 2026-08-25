@@ -28,6 +28,32 @@ namespace Crosswim.Runtime
                 AlignNose(rb, missile.transform, rb.velocity, dt, CrosswimConstants.BallisticAlignDegS, false);
         }
 
+        /// <summary>
+        /// AShM ApplyAero substitute: bend velocity toward nose at min(maxTurnRate, g/V).
+        /// Without this, thrust locks the flight path and AlignNose alone cannot dive.
+        /// </summary>
+        internal static void BendVelocityToNose(
+            Rigidbody rb,
+            Transform xform,
+            float dt,
+            float maxTurnDegS,
+            float gLimit)
+        {
+            if (rb == null || xform == null || dt <= 0f)
+                return;
+            Vector3 vel = rb.velocity;
+            float speed = vel.magnitude;
+            if (speed < 2f)
+                return;
+
+            float omega = maxTurnDegS * Mathf.Deg2Rad;
+            if (gLimit > 0.1f)
+                omega = Mathf.Min(omega, 9.81f * gLimit / speed);
+
+            Vector3 dir = Vector3.RotateTowards(vel.normalized, xform.forward, omega * dt, 0f);
+            rb.velocity = dir * speed;
+        }
+
         internal static void AlignNose(
             Rigidbody rb,
             Transform xform,

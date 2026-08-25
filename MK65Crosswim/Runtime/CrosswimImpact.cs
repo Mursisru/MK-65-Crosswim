@@ -58,6 +58,8 @@ namespace Crosswim.Runtime
             CrosswimPlugin.ModLog?.LogInfo(
                 $"Crosswim impact '{reason}' pos={pos} under={under}");
 
+            CrosswimShellPrep.EnsureBlastYield(missile);
+            CrosswimWarheadFx.Ensure(missile);
             CrosswimShellPrep.Arm(missile);
             CrosswimDetonateGate.Allow = true;
             try

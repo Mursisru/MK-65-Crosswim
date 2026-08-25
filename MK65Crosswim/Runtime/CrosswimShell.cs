@@ -42,8 +42,16 @@ namespace Crosswim.Runtime
             if (missile == null)
                 return;
             ImpactFuseField?.SetValue(missile, false);
-            BlastYieldField?.SetValue(missile, CrosswimConstants.BlastYieldKg);
+            EnsureBlastYield(missile);
+            CrosswimWarheadFx.Ensure(missile);
             Disarm(missile);
+        }
+
+        internal static void EnsureBlastYield(Missile missile)
+        {
+            if (missile == null)
+                return;
+            BlastYieldField?.SetValue(missile, CrosswimConstants.BlastYieldKg);
         }
 
         internal static void Disarm(Missile missile)
@@ -58,6 +66,8 @@ namespace Crosswim.Runtime
         {
             if (missile == null)
                 return;
+            EnsureBlastYield(missile);
+            CrosswimWarheadFx.Ensure(missile);
             if (WarheadField?.GetValue(missile) is Missile.Warhead wh)
                 wh.Armed = true;
         }
