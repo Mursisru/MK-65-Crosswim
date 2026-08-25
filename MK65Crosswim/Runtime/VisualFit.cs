@@ -3,8 +3,7 @@ using UnityEngine;
 namespace Crosswim.Runtime
 {
     /// <summary>
-    /// Hangar fit on inactive prefabs (localPositions only).
-    /// Pointed end → +Z (aircraft forward). Snap DockingPlace to hardpoint — no hull flush.
+    /// Hangar fit: MainEngine→−Z, DockingPlace snap (lossy-scale safe), then flush Main top to pylon.
     /// </summary>
     internal static class VisualFit
     {
@@ -26,7 +25,10 @@ namespace Crosswim.Runtime
             float s = (CrosswimConstants.LengthM * CrosswimConstants.VisualScaleMult) / span;
             vis.localScale = new Vector3(s, s, s);
 
+            // Scale first, then snap with world→parent (matches Hydra; fixes 0.75 drift).
             SnapDockingPlace(vis);
+            FlushMeshTopToPylon(vis);
+            vis.localPosition += Vector3.down * CrosswimConstants.MountClearanceM;
 
             CrosswimPlugin.ModLog?.LogInfo(
                 $"VisualFit scale={s:F4} span={span:F2} rot={vis.localRotation.eulerAngles} pos={vis.localPosition}");
@@ -89,9 +91,63 @@ namespace Crosswim.Runtime
                 CrosswimPlugin.ModLog?.LogWarning("VisualFit: DockingPlace missing");
                 return;
             }
-            Vector3 local = LocalInVis(vis, attach);
-            Vector3 inParent = vis.localRotation * Vector3.Scale(local, vis.localScale);
-            vis.localPosition -= inParent;
+
+            Vector3 attachInParent = vis.parent.InverseTransformPoint(attach.position);
+            vis.localPosition -= attachInParent;
+        }
+
+        /// <summary>
+        /// DockingPlace empty sits above the hull — after snap there is air under the pylon.
+        /// Pull Main top (world AABB → parent Y) to the hardpoint. Skips Cube/OP.
+        /// </summary>
+        private static void FlushMeshTopToPylon(Transform vis)
+        {
+            if (vis.parent == null)
+                return;
+
+            float maxY = float.MinValue;
+            bool any = false;
+            Renderer[] rs = vis.GetComponentsInChildren<Renderer>(true);
+            for (int i = 0; i < rs.Length; i++)
+            {
+                Renderer r = rs[i];
+                if (r == null || !r.enabled || !r.gameObject.activeSelf)
+                    continue;
+                if (!IsHullForFlush(r.gameObject.name))
+                    continue;
+
+                Bounds b = r.bounds;
+                Vector3 c = b.center;
+                Vector3 e = b.extents;
+                for (int ix = -1; ix <= 1; ix += 2)
+                {
+                    for (int iy = -1; iy <= 1; iy += 2)
+                    {
+                        for (int iz = -1; iz <= 1; iz += 2)
+                        {
+                            Vector3 world = new Vector3(c.x + ix * e.x, c.y + iy * e.y, c.z + iz * e.z);
+                            float y = vis.parent.InverseTransformPoint(world).y;
+                            if (y > maxY)
+                                maxY = y;
+                            any = true;
+                        }
+                    }
+                }
+            }
+
+            if (!any)
+                return;
+            vis.localPosition += new Vector3(0f, -maxY, 0f);
+        }
+
+        private static bool IsHullForFlush(string name)
+        {
+            if (string.IsNullOrEmpty(name))
+                return false;
+            if (CrosswimOpening.IsOpeningPart(name))
+                return false;
+            return name.Equals("Main", System.StringComparison.OrdinalIgnoreCase)
+                || name.StartsWith("Main.", System.StringComparison.OrdinalIgnoreCase);
         }
 
         private static Vector3 LocalInVis(Transform vis, Transform t)
