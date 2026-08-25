@@ -80,8 +80,9 @@ namespace Crosswim.Patches
             info.massPerRound = CrosswimConstants.MassKg;
             info.blastDamage = CrosswimConstants.BlastYieldKg;
             info.costPerRound = CrosswimConstants.Cost;
-            info.missile = true;
-            info.bomb = false;
+            info.gravMult = 1f;
+            info.missile = false;
+            info.bomb = true;
             info.glideBomb = false;
             if (CrosswimBootstrap.Definition?.unitPrefab != null)
                 info.weaponPrefab = CrosswimBootstrap.Definition.unitPrefab;

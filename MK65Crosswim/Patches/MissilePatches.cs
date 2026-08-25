@@ -72,6 +72,7 @@ namespace Crosswim.Patches
     [HarmonyPatch(typeof(Missile), "DetectCollisions")]
     internal static class MissileDetectCollisionsPatch
     {
+        // Always skip vanilla Linecasts for Crosswim — we handle water by sea Y (no hitch).
         private static bool Prefix(Missile __instance) =>
             !CrosswimBootstrap.IsOurMissile(__instance);
     }

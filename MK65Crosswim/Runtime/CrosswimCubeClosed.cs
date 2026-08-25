@@ -3,7 +3,7 @@ using UnityEngine;
 namespace Crosswim.Runtime
 {
     /// <summary>
-    /// Hangar = FBX imported local TRS (Blender bind). No dump overwrite.
+    /// Hangar / air = FBX bind. Do not write dump quats over Cube.
     /// </summary>
     internal static class CrosswimCubeClosed
     {

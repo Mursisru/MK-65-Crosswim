@@ -1,9 +1,11 @@
+using System;
 using UnityEngine;
 
 namespace Crosswim.Runtime
 {
     internal static class CrosswimVisualParts
     {
+        // Exact VLSB mesh only — not VLSBEngineEffectsSpawn*.
         internal static void ApplyCarrier(Transform vis, bool ship, bool encyclopedia)
         {
             if (vis == null)
@@ -12,8 +14,24 @@ namespace Crosswim.Runtime
             bool showVlsb = ship && !encyclopedia;
             bool showDock = !ship && !encyclopedia;
 
-            SetNamedActive(vis, CrosswimConstants.VlsbAliases, showVlsb);
+            SetVlsbTree(vis, showVlsb);
             SetNamedActive(vis, CrosswimConstants.DockAliases, showDock);
+        }
+
+        private static void SetVlsbTree(Transform vis, bool active)
+        {
+            Transform[] all = vis.GetComponentsInChildren<Transform>(true);
+            for (int i = 0; i < all.Length; i++)
+            {
+                Transform t = all[i];
+                if (t == null || t == vis)
+                    continue;
+                string n = t.name;
+                if (string.Equals(n, "VLSB", StringComparison.OrdinalIgnoreCase) ||
+                    n.StartsWith("VLSB.", StringComparison.OrdinalIgnoreCase) ||
+                    n.StartsWith("VLSBEngine", StringComparison.OrdinalIgnoreCase))
+                    t.gameObject.SetActive(active);
+            }
         }
 
         internal static void SetNamedActive(Transform vis, string[] aliases, bool active)

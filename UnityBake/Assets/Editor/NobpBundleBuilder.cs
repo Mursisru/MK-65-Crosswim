@@ -107,8 +107,9 @@ namespace Crosswim.UnityBake
                 return;
             }
 
-            // Legacy clips bake Blender-space TRS onto Cube* and stack two fins in one slot.
-            // None = same axis conversion as DockingPlace/empties (folded rest from the FBX).
+            // Sample opening from Legacy clips, then None for hangar rest (same FBX axes as OP).
+            ConfigureImporter(fbxPath, ModelImporterAnimationType.Legacy);
+            CubeKeyBaker.BindPose[] cubeBinds = CubeKeyBaker.BakeAndWriteKeys(fbxPath);
             ConfigureImporter(fbxPath, ModelImporterAnimationType.None);
             GameObject fbx = AssetDatabase.LoadAssetAtPath<GameObject>(fbxPath);
             if (fbx == null)
@@ -184,6 +185,7 @@ namespace Crosswim.UnityBake
                 r.sharedMaterials = dst;
             }
 
+            CubeKeyBaker.ApplyBinds(root, cubeBinds);
             PoseClosed(root);
             LogFinRest(root);
             AssetDatabase.SaveAssets();

@@ -97,10 +97,15 @@ namespace Crosswim.Runtime
             Rigidbody? rb = missile.rb != null ? missile.rb : missile.GetComponent<Rigidbody>();
             if (rb != null)
             {
+                Vector3 keep = rb.velocity;
+                if (keep.sqrMagnitude < 0.01f)
+                    keep = missile.startingVelocity;
+                rb.isKinematic = false;
                 rb.detectCollisions = false;
-                Vector3 src = missile.startingVelocity.sqrMagnitude > 0.01f ? missile.startingVelocity : rb.velocity;
-                if (src.sqrMagnitude > 0.01f)
-                    rb.velocity = src;
+                rb.useGravity = true;
+                if (keep.sqrMagnitude > 0.01f)
+                    rb.velocity = keep;
+                rb.angularVelocity = Vector3.zero;
             }
 
             if (fireTarget != null)
@@ -122,6 +127,12 @@ namespace Crosswim.Runtime
         {
             if (missile == null || !CrosswimBootstrap.IsOurMissile(missile))
                 return;
+            // Already claimed + flying — do not re-stamp visuals (was a hitch source).
+            if (missile.GetComponent<CrosswimFlight>() != null)
+            {
+                ApplyDisplayIdentity(missile);
+                return;
+            }
             Claim(missile);
             FinishVisual(missile);
         }

@@ -11,6 +11,9 @@ namespace Crosswim.Runtime
         Swim
     }
 
+    /// <summary>
+    /// Drop → ballistic → water → swim. Physics live in Ballistic/Swim; no GC in FixedUpdate.
+    /// </summary>
     internal sealed class CrosswimFlight : MonoBehaviour
     {
         private Missile? _missile;
@@ -19,6 +22,7 @@ namespace Crosswim.Runtime
         private float _phaseT;
         private float _life;
         private bool _dockShed;
+        private bool _engineFx;
         private Transform? _visual;
         private Unit? _target;
         private Vector3 _lead;
@@ -46,6 +50,8 @@ namespace Crosswim.Runtime
             if (_visual != null)
                 CrosswimVisualParts.ApplyCarrier(_visual, ship, encyclopedia);
 
+            EnableFlyPhysics();
+
             if (encyclopedia)
             {
                 enabled = false;
@@ -63,6 +69,22 @@ namespace Crosswim.Runtime
                 ShedDockImmediate();
             }
             _phaseT = 0f;
+            _life = 0f;
+            _engineFx = false;
+        }
+
+        private void EnableFlyPhysics()
+        {
+            if (_rb == null)
+                return;
+            Vector3 keep = _rb.velocity;
+            if (keep.sqrMagnitude < 0.01f && _missile != null)
+                keep = _missile.startingVelocity;
+            _rb.isKinematic = false;
+            _rb.detectCollisions = false;
+            _rb.useGravity = true;
+            _rb.velocity = keep;
+            _rb.angularVelocity = Vector3.zero;
         }
 
         private static Unit? ResolveTarget(Missile missile)
@@ -92,16 +114,16 @@ namespace Crosswim.Runtime
                     ShedDockImmediate();
                     _phase = CrosswimPhase.Ballistic;
                     _phaseT = 0f;
-                    BallisticStep(dt);
+                    TickBallistic(dt);
                     break;
                 case CrosswimPhase.VlsbLoft:
                     VlsbStep(dt);
                     break;
                 case CrosswimPhase.Ballistic:
-                    BallisticStep(dt);
+                    TickBallistic(dt);
                     break;
                 case CrosswimPhase.Swim:
-                    SwimStep(dt);
+                    TickSwim(dt);
                     break;
             }
         }
@@ -121,6 +143,7 @@ namespace Crosswim.Runtime
             rb.drag = 0.4f;
             rb.useGravity = true;
             rb.isKinematic = false;
+            rb.detectCollisions = true;
             rb.velocity = vel - transform.forward * CrosswimConstants.DockEjectSpeed + Vector3.down * 3f;
             Object.Destroy(dock.gameObject, CrosswimConstants.DockDestroyS);
         }
@@ -129,9 +152,15 @@ namespace Crosswim.Runtime
         {
             if (_rb == null)
                 return;
+            _rb.useGravity = true;
             float alt = transform.position.y - Datum.LocalSeaY;
             _rb.AddForce(Vector3.up * CrosswimConstants.VlsbThrustMps2, ForceMode.Acceleration);
-            AlignTo(_rb.velocity.sqrMagnitude > 1f ? _rb.velocity.normalized : Vector3.up, dt, 80f);
+            CrosswimBallistic.AlignNose(
+                _rb,
+                transform,
+                _rb.velocity.sqrMagnitude > 1f ? _rb.velocity : Vector3.up,
+                dt,
+                80f);
             if (alt >= CrosswimConstants.VlsbLoftAltM || _phaseT >= CrosswimConstants.VlsbMaxTimeS)
                 ShedVlsb();
         }
@@ -148,6 +177,7 @@ namespace Crosswim.Runtime
                     Rigidbody rb = vlsb.gameObject.GetComponent<Rigidbody>() ?? vlsb.gameObject.AddComponent<Rigidbody>();
                     rb.mass = CrosswimConstants.VlsbDryMassKg;
                     rb.useGravity = true;
+                    rb.isKinematic = false;
                     rb.velocity = vel + Vector3.down * 2f;
                     Object.Destroy(vlsb.gameObject, 10f);
                 }
@@ -158,16 +188,12 @@ namespace Crosswim.Runtime
             _phaseT = 0f;
         }
 
-        private void BallisticStep(float dt)
+        private void TickBallistic(float dt)
         {
-            if (_rb == null)
+            if (_missile == null)
                 return;
-            _rb.useGravity = true;
-            _rb.drag = CrosswimConstants.BallisticDrag;
-            _rb.angularDrag = CrosswimConstants.BallisticAngularDrag;
-            if (_rb.velocity.sqrMagnitude > 0.05f)
-                AlignTo(_rb.velocity.normalized, dt, CrosswimConstants.BallisticAlignDegS);
-            if (transform.position.y <= Datum.LocalSeaY + CrosswimConstants.WaterEntrySubmergeM)
+            CrosswimBallistic.Apply(_missile, dt);
+            if (transform.position.y <= Datum.LocalSeaY)
                 EnterWater();
         }
 
@@ -175,38 +201,35 @@ namespace Crosswim.Runtime
         {
             if (_rb == null || _missile == null)
                 return;
+            if (_phase == CrosswimPhase.Swim)
+                return;
+
             Vector3 v = _rb.velocity;
-            v.y = Mathf.Min(v.y, -2f);
+            v.y = Mathf.Min(v.y, -4f);
+            if (v.sqrMagnitude < 1f)
+                v = transform.forward * 8f + Vector3.down * 4f;
             _rb.velocity = v;
             _rb.useGravity = false;
+            _rb.drag = 0f;
+            _rb.angularDrag = CrosswimConstants.SwimAngularDrag;
+            _rb.detectCollisions = false;
+
             CrosswimShellPrep.Arm(_missile);
             CrosswimOpening.Play(_visual);
             _phase = CrosswimPhase.Swim;
             _phaseT = 0f;
             PlayEngineFx();
+            CrosswimPlugin.ModLog?.LogInfo($"Crosswim water entry y={transform.position.y:F1} sea={Datum.LocalSeaY:F1}");
         }
 
-        private void SwimStep(float dt)
+        private void TickSwim(float dt)
         {
             if (_rb == null || _missile == null)
                 return;
+
             _target = CrosswimHoming.SelectTarget(_missile, _target);
             Vector3 aim = CrosswimHoming.InterceptPoint(_missile.transform.position, _rb.velocity, _target, out _lead);
-            Vector3 to = aim - transform.position;
-            if (to.sqrMagnitude < 0.01f)
-                to = transform.forward;
-            Vector3 dir = to.normalized;
-            float depth = Datum.LocalSeaY - CrosswimConstants.SwimDepthM;
-            if (transform.position.y > depth)
-                dir = (dir + Vector3.down * 0.35f).normalized;
-
-            float ramp = Mathf.Clamp01(_phaseT / CrosswimConstants.SwimThrustRampS);
-            float speed = CrosswimConstants.SwimSpeedMps * ramp;
-            Vector3 want = dir * speed;
-            _rb.velocity = Vector3.MoveTowards(_rb.velocity, want, CrosswimConstants.SwimLinearDrag * dt * 10f);
-            if (_rb.velocity.magnitude > CrosswimConstants.SwimSpeedMps)
-                _rb.velocity = _rb.velocity.normalized * CrosswimConstants.SwimSpeedMps;
-            AlignTo(dir, dt, CrosswimConstants.SwimTurnRateDeg);
+            CrosswimSwim.Apply(_missile, aim, dt, _phaseT);
 
             if (_target != null &&
                 (transform.position - _target.transform.position).sqrMagnitude <=
@@ -216,28 +239,12 @@ namespace Crosswim.Runtime
             }
         }
 
-        private void AlignTo(Vector3 dir, float dt, float degS)
-        {
-            if (dir.sqrMagnitude < 1e-6f)
-                return;
-            Quaternion want = Quaternion.LookRotation(dir, Vector3.up);
-            transform.rotation = Quaternion.RotateTowards(transform.rotation, want, degS * dt);
-            if (_rb != null)
-                _rb.angularVelocity *= 0.5f;
-        }
-
         private void PlayEngineFx()
         {
-            if (_visual == null)
+            if (_engineFx || _missile == null)
                 return;
-            Transform? spawn = CrosswimVisualParts.FindByAliases(_visual, CrosswimConstants.MainEngineAliases);
-            if (spawn == null)
-                return;
-            ParticleSystem[] ps = GetComponentsInChildren<ParticleSystem>(true);
-            if (ps.Length == 0)
-                return;
-            ParticleSystem clone = Instantiate(ps[0], spawn.position, spawn.rotation, spawn);
-            clone.Play(true);
+            _engineFx = true;
+            CrosswimMotorFx.Play(_missile, _visual);
         }
 
         private void TryDetonate()

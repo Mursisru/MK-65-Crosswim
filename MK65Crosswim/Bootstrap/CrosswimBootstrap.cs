@@ -47,6 +47,8 @@ namespace Crosswim.Bootstrap
                 if (shell?.unitPrefab != null)
                     VisualShader.PrimeFrom(shell.unitPrefab);
 
+                CrosswimMotorFx.Capture(enc);
+
                 if (Encyclopedia.Lookup != null &&
                     Encyclopedia.Lookup.TryGetValue(CrosswimConstants.MissileJsonKey, out UnitDefinition existing) &&
                     existing is MissileDefinition md && md.unitPrefab != null)
@@ -170,9 +172,11 @@ namespace Crosswim.Bootstrap
             info.blastDamage = CrosswimConstants.BlastYieldKg;
             info.pK = CrosswimConstants.Pk;
             info.fireInterval = CrosswimConstants.FireIntervalS;
-            info.maxSpeed = CrosswimConstants.SwimSpeedMps;
-            info.missile = true;
-            info.bomb = false;
+            info.maxSpeed = 250f;
+            info.gravMult = 1f;
+            // Free-fall CCIP (CombatHUD BombingUI), not missile lock range.
+            info.missile = false;
+            info.bomb = true;
             info.glideBomb = false;
             ApplyTargetProfile(info);
             mount.info = info;
@@ -229,7 +233,11 @@ namespace Crosswim.Bootstrap
             info.shortName = CrosswimConstants.ShortName;
             info.massPerRound = CrosswimConstants.MassKg;
             info.blastDamage = CrosswimConstants.BlastYieldKg;
-            info.maxSpeed = CrosswimConstants.SwimSpeedMps;
+            info.maxSpeed = 250f;
+            info.gravMult = 1f;
+            info.missile = false;
+            info.bomb = true;
+            info.glideBomb = false;
             ApplyTargetProfile(info);
             if (def?.unitPrefab != null)
                 info.weaponPrefab = def.unitPrefab;
@@ -251,12 +259,13 @@ namespace Crosswim.Bootstrap
             };
             TargetRequirements tr = info.targetRequirements;
             tr.lineOfSight = false;
-            tr.minAltitude = -200f;
-            tr.maxAltitude = 80f;
-            tr.minRange = CrosswimConstants.AiMinRangeM;
+            tr.minAltitude = -50f;
+            tr.maxAltitude = 20000f;
+            tr.minRange = 0f;
+            // Ballistic free-fall envelope (CCIP uses kinematics; this caps AI / HUD ring).
             tr.maxRange = CrosswimConstants.AiMaxRangeM;
-            tr.maxSpeed = 90f;
-            tr.minAlignment = 0f;
+            tr.maxSpeed = 200f;
+            tr.minAlignment = 180f;
             tr.minOwnerSpeed = 0f;
             info.targetRequirements = tr;
         }

@@ -3,8 +3,7 @@ using UnityEngine;
 namespace Crosswim.Runtime
 {
     /// <summary>
-    /// Hangar: FBX local bind, Legacy Animation off.
-    /// Water: rest * dump deltas, not Animation.Play.
+    /// Hangar / air = frame 0 absolute FBX pose.
     /// </summary>
     internal static class CrosswimOpening
     {

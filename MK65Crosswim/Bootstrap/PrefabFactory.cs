@@ -63,7 +63,15 @@ namespace Crosswim.Bootstrap
             if (internalBay)
                 HideBayVisuals(instance);
             else
+            {
                 EnsureVisualRenderers(instance);
+                Transform? vis = FindVisual(instance.transform);
+                if (vis != null)
+                {
+                    VisualFit.Apply(vis);
+                    CrosswimOpening.PoseClosed(vis);
+                }
+            }
         }
 
         internal static void HideBayVisuals(GameObject host)
@@ -166,6 +174,8 @@ namespace Crosswim.Bootstrap
             for (int i = 0; i < rs.Length; i++)
             {
                 if (rs[i] == null || IsVisualRoot(rs[i].transform))
+                    continue;
+                if (rs[i] is ParticleSystemRenderer)
                     continue;
                 rs[i].enabled = false;
             }
@@ -286,8 +296,8 @@ namespace Crosswim.Bootstrap
             dst.useWeaponDoors = src.useWeaponDoors;
             dst.boresight = src.boresight;
             dst.laserGuided = false;
-            dst.missile = true;
-            dst.bomb = false;
+            dst.missile = false;
+            dst.bomb = true;
             dst.glideBomb = false;
             dst.gun = false;
             dst.overHorizon = false;

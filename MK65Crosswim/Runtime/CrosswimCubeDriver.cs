@@ -3,38 +3,31 @@ using UnityEngine;
 namespace Crosswim.Runtime
 {
     /// <summary>
-    /// Opening = FBX rest * Blender delta. Children stay in model local space.
+    /// Opening = absolute FBX localRotation from bake. No bind multiply, no Convert.
     /// </summary>
     internal sealed class CrosswimCubeDriver : MonoBehaviour
     {
-        private struct Bind
-        {
-            public Vector3 pos;
-            public Quaternion rot;
-            public Vector3 scale;
-        }
-
         private readonly Transform?[] _fins = new Transform?[CrosswimCubeKeys.FinCount];
-        private readonly Bind[] _bind = new Bind[CrosswimCubeKeys.FinCount];
-        private bool _captured;
+        private readonly Vector3[] _pos = new Vector3[CrosswimCubeKeys.FinCount];
+        private readonly Vector3[] _scale = new Vector3[CrosswimCubeKeys.FinCount];
+        private bool _ready;
         private float _elapsed;
         private bool _playing;
 
         internal void CaptureBindIfNeeded()
         {
-            if (_captured)
+            if (_ready)
                 return;
-            CacheFins();
-            for (int i = 0; i < _fins.Length; i++)
+            for (int i = 0; i < CrosswimCubeKeys.FinCount; i++)
             {
-                Transform? t = _fins[i];
+                Transform? t = CrosswimCubeClosed.FindExact(transform, CrosswimCubeKeys.Names[i]);
+                _fins[i] = t;
                 if (t == null)
                     continue;
-                _bind[i].pos = t.localPosition;
-                _bind[i].rot = t.localRotation;
-                _bind[i].scale = t.localScale;
+                _pos[i] = t.localPosition;
+                _scale[i] = t.localScale;
             }
-            _captured = true;
+            _ready = true;
         }
 
         internal void Begin()
@@ -73,25 +66,18 @@ namespace Crosswim.Runtime
             ApplyFrame(frame);
         }
 
-        private void CacheFins()
-        {
-            for (int i = 0; i < CrosswimCubeKeys.FinCount; i++)
-                _fins[i] = CrosswimCubeClosed.FindExact(transform, CrosswimCubeKeys.Names[i]);
-        }
-
         private void ApplyFrame(float frame)
         {
-            if (!_captured)
+            if (!_ready)
                 return;
             for (int i = 0; i < _fins.Length; i++)
             {
                 Transform? t = _fins[i];
                 if (t == null)
                     continue;
-                Bind b = _bind[i];
-                t.localPosition = b.pos;
-                t.localRotation = b.rot * CrosswimCubeKeys.Delta(i, frame);
-                t.localScale = b.scale;
+                t.localPosition = _pos[i];
+                t.localScale = _scale[i];
+                t.localRotation = CrosswimCubeKeys.Sample(i, frame);
             }
         }
     }

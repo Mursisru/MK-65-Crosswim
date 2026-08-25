@@ -1,20 +1,40 @@
+using System.Collections.Generic;
 using Crosswim.Bootstrap;
 using UnityEngine;
 
 namespace Crosswim.Runtime
 {
+    /// <summary>
+    /// Target pick without FindObjectsOfType (that was 1 FPS during swim / early water).
+    /// Scans UnitRegistry.allUnits on a throttle.
+    /// </summary>
     internal static class CrosswimHoming
     {
+        private const float RescanS = 0.35f;
+        private static float _nextScan;
+        private static Unit? _cachedTorpedo;
+        private static Unit? _cachedShip;
+        private static Missile? _cachedFor;
+
         internal static Unit? SelectTarget(Missile self, Unit? current)
         {
             if (self == null)
                 return current;
-            Unit? torpedo = FindHostileUnderwaterMissile(self);
-            if (torpedo != null)
-                return torpedo;
+
+            if (!ReferenceEquals(_cachedFor, self) || Time.time >= _nextScan)
+            {
+                _cachedFor = self;
+                _nextScan = Time.time + RescanS;
+                Scan(self, out _cachedTorpedo, out _cachedShip);
+            }
+
+            if (_cachedTorpedo != null && IsUseful(self, _cachedTorpedo))
+                return _cachedTorpedo;
             if (IsUseful(self, current))
                 return current;
-            return FindHostileShip(self);
+            if (_cachedShip != null && IsUseful(self, _cachedShip))
+                return _cachedShip;
+            return null;
         }
 
         internal static Vector3 InterceptPoint(Vector3 pos, Vector3 vel, Unit? target, out Vector3 lead)
@@ -32,52 +52,47 @@ namespace Crosswim.Runtime
             return tgtPos + lead;
         }
 
-        private static Unit? FindHostileUnderwaterMissile(Missile self)
+        private static void Scan(Missile self, out Unit? torpedo, out Unit? ship)
         {
-            Unit? best = null;
-            float bestSq = CrosswimConstants.TorpedoScanRangeM * CrosswimConstants.TorpedoScanRangeM;
-            Missile[] all = Object.FindObjectsOfType<Missile>();
-            for (int i = 0; i < all.Length; i++)
+            torpedo = null;
+            ship = null;
+            float bestTorpSq = CrosswimConstants.TorpedoScanRangeM * CrosswimConstants.TorpedoScanRangeM;
+            float bestShipSq = CrosswimConstants.ShipScanRangeM * CrosswimConstants.ShipScanRangeM;
+            float sea = Datum.LocalSeaY;
+            Vector3 selfPos = self.transform.position;
+            List<Unit> units = UnitRegistry.allUnits;
+            for (int i = 0; i < units.Count; i++)
             {
-                Missile m = all[i];
-                if (m == null || m == self || !IsHostile(self, m))
+                Unit u = units[i];
+                if (u == null || u == self || !IsHostile(self, u))
                     continue;
-                if (m.transform.position.y > Datum.LocalSeaY - 0.5f)
+
+                float sq = (u.transform.position - selfPos).sqrMagnitude;
+                if (u is Missile m)
+                {
+                    if (CrosswimBootstrap.IsOurMissile(m))
+                        continue;
+                    if (m.transform.position.y > sea - 0.5f)
+                        continue;
+                    if (sq >= bestTorpSq)
+                        continue;
+                    bestTorpSq = sq;
+                    torpedo = m;
                     continue;
-                if (CrosswimBootstrap.IsOurMissile(m))
-                    continue;
-                float sq = (m.transform.position - self.transform.position).sqrMagnitude;
-                if (sq >= bestSq)
-                    continue;
-                bestSq = sq;
-                best = m;
+                }
+
+                if (u is Ship)
+                {
+                    if (sq >= bestShipSq)
+                        continue;
+                    bestShipSq = sq;
+                    ship = u;
+                }
             }
-            return best;
         }
 
-        private static Unit? FindHostileShip(Missile self)
-        {
-            Unit? best = null;
-            float bestSq = CrosswimConstants.ShipScanRangeM * CrosswimConstants.ShipScanRangeM;
-            Ship[] ships = Object.FindObjectsOfType<Ship>();
-            for (int i = 0; i < ships.Length; i++)
-            {
-                Ship s = ships[i];
-                if (s == null || !IsHostile(self, s))
-                    continue;
-                float sq = (s.transform.position - self.transform.position).sqrMagnitude;
-                if (sq >= bestSq)
-                    continue;
-                bestSq = sq;
-                best = s;
-            }
-            return best;
-        }
-
-        private static bool IsUseful(Missile self, Unit? u)
-        {
-            return u != null && !u.disabled && IsHostile(self, u);
-        }
+        private static bool IsUseful(Missile self, Unit? u) =>
+            u != null && !u.disabled && IsHostile(self, u);
 
         private static bool IsHostile(Missile self, Unit other)
         {
