@@ -1,21 +1,20 @@
 # Changelog
 
-## 0.0.0
+## [1.0.0] - 2026-09-01
+
+First public release.
 
 ### Added
 
-- Standalone MK-65 Crosswim BepInEx plugin (`com.mursisru.mk65crosswim`)
-- AShM hardpoint add-only inject, Dynamo/Argus VLS ship launcher
-- Anti-torpedo intercept swim profile, CrosswimVisual nobp stamp, hangar rest pose
-- UCUPaint Color bake pipeline: `GlossyMetal_Color.png` from Bake All Channels
+- **MK-65 Crosswim** anti-torpedo interceptor for Nuclear Option (BepInEx 5 + Blueprinter 2.0.1).
+- AShM hardpoint inject; Dynamo/Argus ship VLS; swim homing and MK-88-style hull probe fuse.
+- Submerged radar stealth, hull sonar tracks, interceptor-scale blast.
 
-### Fixed
+### Changed
 
-- Wrong albedo sources (UCUPaint masks and AO used as base color)
-- Green chrome gloss on painted body (`GlossyMetal` metallic=0, matte roughness)
-- Per-slot materials: body Color bake, Metal2/LightMaterial solid tints on fins
+- Blueprinter 2.0.1: bootstrap waits `PatchRunner.ApplyAllOps` (replaces `PatchingComplete`).
 
-### Notes
+> [!IMPORTANT]
+> Requires **BepInEx 5** and **[Blueprinter 2.0.1+](https://github.com/nikkorap/NOBlueprinter-Releases)** (`com.nikkorap.blueprinter`).
 
-- Requires **BepInEx 5** and **Blueprinter**
-- Deploy folder: `BepInEx/plugins/MK-65-Crosswim/` (dll, nobp, preview, `Textures/`)
+Deploy folder: `BepInEx/plugins/MK-65-Crosswim/` (dll, nobp, preview, `Textures/`).
