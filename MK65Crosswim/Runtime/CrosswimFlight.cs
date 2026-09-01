@@ -35,6 +35,10 @@ namespace Crosswim.Runtime
         private float _swimFuelUsedM;
         private GameObject? _boosterFx;
         private float _vlsbFuelKg;
+        private bool _boosterLit;
+        private float _stallT;
+        private float _submergedLoftT;
+        private PersistentID _selfId;
 
         internal static void Attach(Missile missile)
         {
@@ -47,6 +51,30 @@ namespace Crosswim.Runtime
         }
 
         internal CrosswimPhase Phase => _phase;
+
+        /// <summary>False when drowned/stalled — ship defense may treat inbound as free.</summary>
+        internal bool CoversThreat
+        {
+            get
+            {
+                if (!enabled || _missile == null || _missile.disabled)
+                    return false;
+                float sea = Datum.LocalSeaY;
+                if (transform.position.y < sea - 0.5f && _phase != CrosswimPhase.Swim)
+                    return false;
+                if (_rb == null)
+                    return true;
+                float spd = _rb.velocity.magnitude;
+                if (_phase == CrosswimPhase.VlsbLoft &&
+                    _phaseT > CrosswimAshmVls.DelayTimeS + CrosswimConstants.VlsbKickTimeS &&
+                    spd < CrosswimConstants.VlsbStallSpeedMps)
+                    return false;
+                if (_phase == CrosswimPhase.Swim && _swimThrustT >= 0f &&
+                    spd < CrosswimConstants.SwimStallSpeedMps)
+                    return false;
+                return true;
+            }
+        }
 
         private void Init(Missile missile)
         {
@@ -72,11 +100,29 @@ namespace Crosswim.Runtime
                 _phase = CrosswimPhase.VlsbLoft;
                 // Stack = body + AShM VLS dry + fuel (Force thrust, same as VLSBooster).
                 _vlsbFuelKg = CrosswimAshmVls.FuelMassKg;
+                _boosterLit = false;
                 CrosswimMass.Apply(missile, CrosswimConstants.MassKg + CrosswimAshmVls.LaunchExtraMassKg);
                 _loftHeading = ResolveLoftHeading(missile, _target);
                 CrosswimMotorFx.SilenceStock(missile);
                 missile.SetThrottle(0f);
+                // Idle FX until tube delay — AShM delayTimer then Activate.
                 _boosterFx = CrosswimMotorFx.SpawnBooster(missile, _visual);
+                // Spawn must clear sea immediately — tube may open near waterline.
+                if (_rb != null)
+                {
+                    float floorY = Datum.LocalSeaY + CrosswimConstants.VlsbMinAltM;
+                    Vector3 p = missile.transform.position;
+                    if (p.y < floorY)
+                    {
+                        p.y = floorY;
+                        _rb.position = p;
+                        missile.transform.position = p;
+                    }
+                    Vector3 v = _rb.velocity;
+                    v.y = Mathf.Max(v.y, CrosswimConstants.VlsbTubeClimbMps);
+                    _rb.velocity = v;
+                    _rb.useGravity = false;
+                }
             }
             else
             {
@@ -89,13 +135,10 @@ namespace Crosswim.Runtime
             _engineFx = false;
             _detonated = false;
             _swimFuelUsedM = 0f;
-            // Track live lock only for wet-missile intercepts (ships use 45 s cadence).
-            if (_target is Missile)
-            {
-                _inboundId = _target.persistentID;
-                CrosswimInbound.Add(_inboundId);
-                _inboundTracked = true;
-            }
+            _stallT = 0f;
+            _submergedLoftT = 0f;
+            _selfId = missile.persistentID;
+            TryClaimInbound();
         }
 
         private void OnDestroy()
@@ -103,11 +146,23 @@ namespace Crosswim.Runtime
             ReleaseInbound();
         }
 
+        private void TryClaimInbound()
+        {
+            if (_inboundTracked || _missile == null || _target is not Missile)
+                return;
+            _selfId = _missile.persistentID;
+            if (!_selfId.IsValid || !_target.persistentID.IsValid)
+                return;
+            _inboundId = _target.persistentID;
+            CrosswimInbound.Add(_inboundId, _selfId);
+            _inboundTracked = true;
+        }
+
         private void ReleaseInbound()
         {
             if (!_inboundTracked)
                 return;
-            CrosswimInbound.Remove(_inboundId);
+            CrosswimInbound.RemoveInterceptor(_selfId);
             _inboundTracked = false;
             _inboundId = default;
         }
@@ -182,6 +237,7 @@ namespace Crosswim.Runtime
         {
             if (_missile == null || _rb == null)
                 return;
+            TryClaimInbound();
             float dt = Time.fixedDeltaTime;
             _life += dt;
             _phaseT += dt;
@@ -229,27 +285,65 @@ namespace Crosswim.Runtime
         {
             if (_rb == null)
                 return;
-            _rb.useGravity = true;
             if (_missile != null)
                 _missile.SetThrottle(0f);
 
             float sea = Datum.LocalSeaY;
+            float delay = CrosswimAshmVls.DelayTimeS;
             float alt = transform.position.y - sea;
 
-            // Hard floor — cruise missile skim, never dive under with VLSB attached.
-            if (alt < CrosswimConstants.VlsbMinAltM)
+            // Tube coast: no gravity sink — rise clear of the deck/water until ignition.
+            bool tube = _phaseT < delay;
+            _rb.useGravity = !tube;
+
+            // SoftKill only if somehow still pinned under after clamps (safety net).
+            if (alt < -0.5f)
             {
-                Vector3 p = transform.position;
-                p.y = sea + CrosswimConstants.VlsbMinAltM;
-                _rb.position = p;
+                _submergedLoftT += dt;
+                if (_submergedLoftT >= CrosswimConstants.VlsbDrownSoftKillS)
+                {
+                    SoftKill();
+                    return;
+                }
+            }
+            else if (!tube &&
+                     _phaseT > delay + CrosswimConstants.VlsbKickTimeS &&
+                     _rb.velocity.magnitude < CrosswimConstants.VlsbStallSpeedMps)
+            {
+                _submergedLoftT += dt;
+                if (_submergedLoftT >= CrosswimConstants.VlsbStallSoftKillS)
+                {
+                    SoftKill();
+                    return;
+                }
+            }
+            else
+                _submergedLoftT = 0f;
+
+            EnforceVlsbAboveSea(sea, climb: tube || alt < CrosswimConstants.VlsbCruiseAltM);
+
+            if (tube)
+            {
                 Vector3 v = _rb.velocity;
-                if (v.y < 0f)
-                    v.y = 0f;
+                v.y = Mathf.Max(v.y, CrosswimConstants.VlsbTubeClimbMps);
                 _rb.velocity = v;
-                alt = CrosswimConstants.VlsbMinAltM;
+                Vector3 wantUp = Vector3.up;
+                if (_rb.velocity.sqrMagnitude > 4f)
+                    wantUp = Vector3.Slerp(Vector3.up, _rb.velocity.normalized, 0.2f).normalized;
+                CrosswimBallistic.AlignNose(
+                    _rb, transform, wantUp, dt, CrosswimConstants.VlsbTubeAlignDegS, levelRoll: true);
+                EnforceVlsbAboveSea(sea, climb: true);
+                return;
             }
 
-            // Soft heading chase — AShM TerrainWaypoint ~10°/tick, not 22°/s.
+            if (!_boosterLit)
+            {
+                CrosswimMotorFx.ActivateBooster(_boosterFx, _missile!);
+                _boosterLit = true;
+            }
+
+            float burnT = _phaseT - delay;
+
             if (_target != null && !_target.disabled && _missile != null)
             {
                 Vector3 desire = ResolveLoftHeading(_missile, _target);
@@ -263,14 +357,13 @@ namespace Crosswim.Runtime
             float dist = DistHorizToTarget();
             float burnS = CrosswimAshmVls.BurnTimeS;
             if (dist <= CrosswimConstants.VlsbShedRangeM ||
-                _phaseT >= burnS ||
+                burnT >= burnS ||
                 _vlsbFuelKg <= 0f)
             {
                 ShedVlsb();
                 return;
             }
 
-            // Burn fuel → mass drop like vanilla VLSBooster.Thrust().
             float burnRate = burnS > 0.01f ? CrosswimAshmVls.FuelMassKg / burnS : CrosswimAshmVls.FuelMassKg;
             float dFuel = burnRate * dt;
             if (dFuel > _vlsbFuelKg)
@@ -280,31 +373,77 @@ namespace Crosswim.Runtime
                 CrosswimMass.Apply(_missile, Mathf.Max(CrosswimConstants.MassKg + CrosswimAshmVls.DryMassKg, _rb.mass - dFuel));
 
             Vector3 want;
-            if (_phaseT < CrosswimConstants.VlsbKickTimeS)
+            float thrustMul = 1f;
+            float turnMul = 1f;
+            alt = transform.position.y - sea;
+            if (burnT < CrosswimConstants.VlsbKickTimeS)
             {
-                float u = _phaseT / CrosswimConstants.VlsbKickTimeS;
+                float u = burnT / CrosswimConstants.VlsbKickTimeS;
                 u = u * u * (3f - 2f * u);
-                want = Vector3.Slerp(Vector3.up, _loftHeading, u).normalized;
+                // Hold climb until above cruise — don't pitch into the sea on soft kick.
+                float pitchHold = alt < CrosswimConstants.VlsbCruiseAltM
+                    ? Mathf.Lerp(1f, 0.35f, Mathf.Clamp01(alt / CrosswimConstants.VlsbCruiseAltM))
+                    : 0f;
+                Vector3 loft = Vector3.Slerp(Vector3.up, _loftHeading, u).normalized;
+                want = Vector3.Slerp(loft, Vector3.up, pitchHold).normalized;
+                thrustMul = Mathf.Lerp(CrosswimConstants.VlsbKickThrustMin, 1f, u);
+                turnMul = Mathf.Lerp(CrosswimConstants.VlsbKickTurnMin, 1f, u);
             }
             else
             {
-                // AShM TerrainWaypoint: aim point ahead at sea + altitudeTarget (bends path down).
                 float speed = _rb.velocity.magnitude;
                 float look = Mathf.Max(speed, 100f) * CrosswimConstants.VlsbLookaheadSpeedMult;
                 Vector3 aim = transform.position + _loftHeading * look;
                 aim.y = sea + CrosswimConstants.VlsbCruiseAltM;
+                // Never aim below the skim floor while still climbing out.
+                if (aim.y < sea + CrosswimConstants.VlsbMinAltM)
+                    aim.y = sea + CrosswimConstants.VlsbMinAltM;
                 want = (aim - transform.position).normalized;
                 if (want.sqrMagnitude < 1e-4f)
                     want = _loftHeading;
+                if (alt < CrosswimConstants.VlsbMinAltM + CrosswimConstants.VlsbFloorBandM && want.y < 0.15f)
+                {
+                    want.y = 0.15f;
+                    want.Normalize();
+                }
             }
 
-            // Nose follows aim at AShM maxTurnRate (no vel-blend that blocked dive).
-            CrosswimBallistic.AlignNose(
-                _rb, transform, want, dt, CrosswimAshmVls.MaxTurnRateDegS, levelRoll: true);
-            // Lift substitute — actually changes velocity vector like ApplyAero.
-            CrosswimBallistic.BendVelocityToNose(
-                _rb, transform, dt, CrosswimAshmVls.MaxTurnRateDegS, CrosswimAshmVls.GLimit);
-            _rb.AddForce(transform.forward * CrosswimAshmVls.EffectiveThrustN, ForceMode.Force);
+            float turnDeg = CrosswimAshmVls.MaxTurnRateDegS * turnMul;
+            float gLim = CrosswimAshmVls.GLimit * turnMul;
+            CrosswimBallistic.AlignNose(_rb, transform, want, dt, turnDeg, levelRoll: true);
+            CrosswimBallistic.BendVelocityToNose(_rb, transform, dt, turnDeg, gLim);
+            _rb.AddForce(transform.forward * (CrosswimAshmVls.EffectiveThrustN * thrustMul), ForceMode.Force);
+
+            // After thrust/bend — re-clamp so physics can't bury us this tick.
+            EnforceVlsbAboveSea(sea, climb: alt < CrosswimConstants.VlsbCruiseAltM);
+        }
+
+        /// <summary>Hard floor for entire VLSB loft — never cross LocalSeaY.</summary>
+        private void EnforceVlsbAboveSea(float sea, bool climb)
+        {
+            if (_rb == null)
+                return;
+
+            float floorY = sea + CrosswimConstants.VlsbMinAltM;
+            Vector3 p = transform.position;
+            if (p.y < floorY)
+            {
+                p.y = floorY;
+                _rb.position = p;
+                transform.position = p;
+                _rb.AddForce(Vector3.up * CrosswimConstants.VlsbSurfaceRescueMps2, ForceMode.Acceleration);
+            }
+
+            Vector3 v = _rb.velocity;
+            float band = floorY + CrosswimConstants.VlsbFloorBandM;
+            if (p.y <= band)
+            {
+                if (v.y < 0f)
+                    v.y = 0f;
+                if (climb)
+                    v.y = Mathf.Max(v.y, CrosswimConstants.VlsbFloorClimbMps);
+                _rb.velocity = v;
+            }
         }
 
         private float DistHorizToTarget()
@@ -398,6 +537,7 @@ namespace Crosswim.Runtime
             _phase = CrosswimPhase.Swim;
             _phaseT = 0f;
             _swimThrustT = -1f;
+            CrosswimStealth.OnSubmerged(_missile);
             TryShedDock();
             CrosswimPlugin.ModLog?.LogInfo(
                 $"Crosswim water entry y={transform.position.y:F1} sea={Datum.LocalSeaY:F1} spd={v.magnitude:F1} hdg={_entryHeading}");
@@ -435,27 +575,69 @@ namespace Crosswim.Runtime
                     SoftKill();
                     return;
                 }
+
+                // Drowned / stalled near launch — free inbound so destroyer can shoot again.
+                if (_rb.velocity.magnitude < CrosswimConstants.SwimStallSpeedMps)
+                {
+                    _stallT += dt;
+                    if (_stallT >= CrosswimConstants.SwimStallSoftKillS)
+                    {
+                        SoftKill();
+                        return;
+                    }
+                }
+                else
+                    _stallT = 0f;
             }
 
             // Only the fire-assigned lock (targetID) — never pick opportunistic nearby units.
             _target = CrosswimHoming.ResolveAssigned(_missile);
             Vector3 aim = CrosswimHoming.InterceptPoint(
                 _missile.transform.position, _rb.velocity, _target, _entryHeading, out _lead);
-            aim.y = Datum.LocalSeaY - CrosswimConstants.SwimDepthM;
-            CrosswimSwim.Apply(_missile, aim, dt, _swimThrustT, _entryHeading, _target != null);
+
+            float cruiseY = Datum.LocalSeaY - CrosswimConstants.SwimDepthM;
+            float horizDist = float.MaxValue;
+            if (_target != null)
+            {
+                Vector3 d = _target.transform.position - transform.position;
+                d.y = 0f;
+                horizDist = d.magnitude;
+            }
+
+            bool terminal = _target != null && horizDist <= CrosswimConstants.SwimTerminalRangeM;
+            if (terminal)
+            {
+                // Soft depth blend: cruise → target keel over range (no snap pitch-up).
+                float tgtY = aim.y;
+                float minUw = Datum.LocalSeaY - 1f;
+                if (tgtY > minUw)
+                    tgtY = minUw;
+
+                float span = CrosswimConstants.SwimTerminalRangeM - CrosswimConstants.SwimTerminalNearM;
+                float u = span > 1f
+                    ? 1f - Mathf.Clamp01((horizDist - CrosswimConstants.SwimTerminalNearM) / span)
+                    : 1f;
+                u = u * u * (3f - 2f * u);
+                aim.y = Mathf.Lerp(cruiseY, tgtY, u);
+            }
+            else
+                aim.y = cruiseY;
+
+            CrosswimSwim.Apply(_missile, aim, dt, _swimThrustT, _entryHeading, _target != null, terminal);
         }
 
         private bool TryImpact(string tag)
         {
             if (_missile == null || _detonated)
                 return false;
-            if (!CrosswimImpact.ProbeHull(_missile, out RaycastHit hit))
+            if (!CrosswimImpact.ProbeAny(_missile, out RaycastHit hit, out string why, out Missile? victim))
                 return false;
-            Boom(hit.normal.sqrMagnitude > 0.01f ? hit.normal : Vector3.up, tag);
+            string reason = string.IsNullOrEmpty(why) ? tag : why + "-" + tag;
+            Boom(hit.normal.sqrMagnitude > 0.01f ? hit.normal : Vector3.up, reason, victim);
             return true;
         }
 
-        private void Boom(Vector3 normal, string reason)
+        private void Boom(Vector3 normal, string reason, Missile? victim = null)
         {
             if (_missile == null || _detonated)
                 return;
@@ -463,7 +645,7 @@ namespace Crosswim.Runtime
             string why = reason;
             if (_target is Ship || (_target != null && _target.GetComponentInParent<Ship>() != null))
                 why = "ship-" + reason;
-            CrosswimImpact.DetonateNow(_missile, normal, why);
+            CrosswimImpact.DetonateNow(_missile, normal, why, victim);
             ReleaseInbound();
             enabled = false;
         }
@@ -481,6 +663,8 @@ namespace Crosswim.Runtime
             if (_missile == null)
                 return;
             ReleaseInbound();
+            CrosswimPlugin.ModLog?.LogInfo(
+                $"Crosswim SoftKill phase={_phase} life={_life:F1}s y={transform.position.y:F1}");
             Object.Destroy(_missile.gameObject);
         }
     }

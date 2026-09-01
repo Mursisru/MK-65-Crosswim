@@ -59,9 +59,23 @@ namespace Crosswim
 
         // Match AShM-300 class body (~encyclopedia / wiki); VLSB dry+fuel added at ship loft.
         public const float MassKg = 600f;
-        public const float BlastYieldKg = 70f;
+        // Light interceptor HE — collateral only; torpedo kill is CrosswimBlast.KillMissile.
+        public const float BlastYieldKg = 30f;
+        // Vanilla Shockwave damage gate (~200 kg). Peak OP scales vs this.
+        public const float BlastShockRefKg = 200f;
+        public const float BlastPeakOverpressure = 25000f;
+        // Extra softener for non-missile collateral (ships skipped entirely in CrosswimBlast).
+        public const float BlastShipDamageScale = 0.15f;
         public const float Cost = 2.4f;
         public const float RadarSize = 0.22f;
+
+        // Hull sonar (underwater-only detection) — same envelope as MK-88 Hydra.
+        public const float SonarMinRangeM = 6000f;
+        public const float SonarMaxRangeM = 25000f;
+        public const float SonarReferenceLengthM = 220f;
+        public const float SonarScanIntervalS = 1.5f;
+        public const float SonarMinSignal = 0.12f;
+        public const float SonarTargetStrength = 0.85f;
 
         public const float SwimSpeedKmh = 550f;
         public const float SwimSpeedMps = SwimSpeedKmh / 3.6f;
@@ -76,6 +90,16 @@ namespace Crosswim
         public const float SwimThrustRampS = 6f;
         public const float SwimTurnRateDeg = 35f;
         public const float SwimDepthM = 6f;
+        // Soft depth blend toward target — start early, never snap pitch-up.
+        public const float SwimTerminalRangeM = 1400f;
+        public const float SwimTerminalNearM = 120f;
+        public const float SwimTerminalPitchMax = 0.18f;
+        public const float SwimCruisePitchMax = 0.22f;
+        // SoftKill if thrust-on but almost stopped (drowned near launch ship).
+        public const float SwimStallSpeedMps = 3f;
+        public const float SwimStallSoftKillS = 6f;
+        // Intercept fuse vs other torpedoes (IgnoreCollisions — SphereCast misses them).
+        public const float DetonateProximityM = 10f;
         public const float WaterDensity = 1025f;
         public const float SwimCdArea = 0.006f;
         public const float SwimPropThrustN =
@@ -113,8 +137,24 @@ namespace Crosswim
 
         // Ship VLS: AShM VLSBooster burn + TerrainWaypoint-style skim + g-limited velocity bend.
         public const float VlsbKickTimeS = 2.2f;
+        // Soft pitch-over after delay — avoid full g / thrust from frame 0 (jerky destroyer start).
+        public const float VlsbKickThrustMin = 0.3f;
+        public const float VlsbKickTurnMin = 0.2f;
+        public const float VlsbTubeAlignDegS = 18f;
         public const float VlsbCruiseAltM = 18f;
-        public const float VlsbMinAltM = 10f;
+        public const float VlsbMinAltM = 12f;
+        // Near-floor climb so gravity can't bury the stack between FixedUpdates.
+        public const float VlsbFloorClimbMps = 8f;
+        public const float VlsbFloorBandM = 3f;
+        // Tube coast: cancel gravity + keep rising until booster lights.
+        public const float VlsbTubeClimbMps = 18f;
+        // Failed VLS: SoftKill if stuck under sea this long during loft.
+        public const float VlsbDrownSoftKillS = 1.25f;
+        // Failed VLS: SoftKill if barely moving after kick should have finished.
+        public const float VlsbStallSpeedMps = 12f;
+        public const float VlsbStallSoftKillS = 3.5f;
+        // Upward rescue thrust while tube/coast near water (m/s²).
+        public const float VlsbSurfaceRescueMps2 = 80f;
         public const float VlsbShedRangeM = 2500f;
         public const float VlsbAimShortM = 2000f;
         public const float VlsbMissAlignDot = 0.35f;

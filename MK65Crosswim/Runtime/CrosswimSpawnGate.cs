@@ -24,6 +24,18 @@ namespace Crosswim.Runtime
             _pendingUntil = Time.realtimeSinceStartup + PendingTtlS;
         }
 
+        /// <summary>Recent Crosswim Fire even if Pending was consumed by a wrong SpawnMissile before the fix.</summary>
+        internal static bool HasRecentFire() =>
+            _pendingUntil > 0f && Time.realtimeSinceStartup <= _pendingUntil;
+
+        /// <summary>Shared AShM shell spawn that missed TryBegin — reclaim as Crosswim only.</summary>
+        internal static bool ShouldRescueClaim(GameObject? prefab)
+        {
+            if (!HasRecentFire())
+                return false;
+            return IsOurFlyPrefab(prefab);
+        }
+
         internal static bool TryBegin()
         {
             Expire();
@@ -84,6 +96,8 @@ namespace Crosswim.Runtime
         {
             if (missile == null)
                 return;
+            if (HasForeignOwnerTag(missile))
+                return;
             ApplyDisplayIdentity(missile);
             if (CrosswimBootstrap.Info != null)
                 InfoField?.SetValue(missile, CrosswimBootstrap.Info);
@@ -94,6 +108,7 @@ namespace Crosswim.Runtime
             CrosswimMotorFx.SilenceStock(missile);
             CrosswimShellPrep.Prepare(missile);
             CrosswimMass.Apply(missile, CrosswimConstants.MassKg);
+            CrosswimStealth.EnsureAirRadarSignature(missile);
 
             Rigidbody? rb = missile.rb != null ? missile.rb : missile.GetComponent<Rigidbody>();
             if (rb != null)
@@ -150,6 +165,24 @@ namespace Crosswim.Runtime
                 return;
             Pending = 0;
             _pendingUntil = -1f;
+        }
+
+        /// <summary>Do not hijack Hydra / other sibling-mod rounds.</summary>
+        private static bool HasForeignOwnerTag(Missile missile)
+        {
+            if (missile == null)
+                return false;
+            MonoBehaviour[] comps = missile.GetComponents<MonoBehaviour>();
+            for (int i = 0; i < comps.Length; i++)
+            {
+                MonoBehaviour? c = comps[i];
+                if (c == null)
+                    continue;
+                string n = c.GetType().Name;
+                if (n.IndexOf("Mk54Tag", System.StringComparison.Ordinal) >= 0)
+                    return true;
+            }
+            return false;
         }
     }
 }

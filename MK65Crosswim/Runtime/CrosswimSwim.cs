@@ -3,8 +3,7 @@ using UnityEngine;
 namespace Crosswim.Runtime
 {
     /// <summary>
-    /// MK-88 pattern: thrust along forward, fin torque toward assigned aim.
-    /// Weathercock uses flattened flow + entry heading — never LookRotation on near-vertical vel (180° flip).
+    /// Swim: thrust along forward + soft depth hold. Terminal depth blends in gently — no snap pitch-up.
     /// </summary>
     internal static class CrosswimSwim
     {
@@ -14,7 +13,8 @@ namespace Crosswim.Runtime
             float dt,
             float thrustTimeS,
             Vector3 entryHeading,
-            bool hasAssignedTarget)
+            bool hasAssignedTarget,
+            bool terminal)
         {
             if (missile?.rb == null || dt <= 0f)
                 return;
@@ -22,7 +22,10 @@ namespace Crosswim.Runtime
             Rigidbody rb = missile.rb;
             Transform xform = missile.transform;
             Vector3 pos = xform.position;
-            float targetY = Datum.LocalSeaY - CrosswimConstants.SwimDepthM;
+            float targetY = aim.y;
+            float minUw = Datum.LocalSeaY - 1f;
+            if (targetY > minUw)
+                targetY = minUw;
             bool bleeding = thrustTimeS < 0f;
 
             rb.useGravity = false;
@@ -58,10 +61,17 @@ namespace Crosswim.Runtime
                 0f)), ForceMode.Acceleration);
 
             float depthErr = targetY - pos.y;
+            // Same soft buoyancy always — no terminal heave spike.
             float buoyancy = bleeding
                 ? CrosswimConstants.SwimBuoyancyGain * 0.35f
                 : CrosswimConstants.SwimBuoyancyGain;
             rb.AddForce(Vector3.up * (depthErr * buoyancy), ForceMode.Acceleration);
+
+            float pitchMax = terminal
+                ? CrosswimConstants.SwimTerminalPitchMax
+                : CrosswimConstants.SwimCruisePitchMax;
+            // Gentle pitch from depth error only.
+            float pitchCmd = Mathf.Clamp(depthErr * 0.045f, -pitchMax, pitchMax);
 
             Vector3 to = aim - pos;
             Vector3 horiz = Horiz(to);
@@ -69,20 +79,19 @@ namespace Crosswim.Runtime
             if (horiz.sqrMagnitude > 1f)
             {
                 wantDir = horiz.normalized;
-                wantDir.y = Mathf.Clamp(depthErr * 0.08f, -0.35f, 0.35f);
+                wantDir.y = pitchCmd;
                 wantDir.Normalize();
             }
             else if (hasAssignedTarget)
             {
-                // Close to aim in XY — keep depth chase, hold current yaw.
                 wantDir = Horiz(forward).sqrMagnitude > 0.01f ? Horiz(forward).normalized : heading;
-                wantDir.y = Mathf.Clamp(depthErr * 0.08f, -0.35f, 0.35f);
+                wantDir.y = pitchCmd;
                 wantDir.Normalize();
             }
             else
             {
                 wantDir = heading;
-                wantDir.y = Mathf.Clamp(depthErr * 0.05f, -0.25f, 0.25f);
+                wantDir.y = Mathf.Clamp(depthErr * 0.04f, -0.2f, 0.2f);
                 wantDir.Normalize();
             }
 
@@ -104,22 +113,19 @@ namespace Crosswim.Runtime
                 }
             }
 
-            // Flattened weathercock — vertical dive must not invent a random yaw.
             if (speed > 2f)
             {
                 Vector3 flatVel = Horiz(vel);
                 Vector3 flowFlat = flatVel.sqrMagnitude > 0.05f ? flatVel.normalized : heading;
                 Vector3 flow = flowFlat;
-                flow.y = Mathf.Clamp(vel.y / Mathf.Max(speed, 0.01f), -0.35f, 0.2f);
-                if (flow.sqrMagnitude > 1e-4f)
-                    flow.Normalize();
-                else
-                    flow = heading;
+                flow.y = Mathf.Clamp(vel.y / Mathf.Max(speed, 0.01f), -pitchMax, pitchMax);
+                // Soft blend toward commanded depth attitude (no snap).
+                flow = Vector3.Slerp(flow.normalized, wantDir, terminal ? 0.28f : 0.18f).normalized;
 
                 Quaternion flowRot = Quaternion.LookRotation(flow, Vector3.up);
                 float align = (bleeding
                     ? CrosswimConstants.SwimBleedAlignDegS
-                    : CrosswimConstants.SwimAlignDegS) * dt * 0.35f;
+                    : CrosswimConstants.SwimAlignDegS) * dt * 0.28f;
                 rb.MoveRotation(Quaternion.RotateTowards(rb.rotation, flowRot, align));
             }
 

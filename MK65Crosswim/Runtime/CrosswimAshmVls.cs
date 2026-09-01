@@ -13,6 +13,7 @@ namespace Crosswim.Runtime
         private static readonly FieldInfo? BurnTimeField = AccessTools.Field(typeof(VLSBooster), "burnTime");
         private static readonly FieldInfo? FuelMassField = AccessTools.Field(typeof(VLSBooster), "fuelMass");
         private static readonly FieldInfo? DryMassField = AccessTools.Field(typeof(VLSBooster), "dryMass");
+        private static readonly FieldInfo? DelayField = AccessTools.Field(typeof(VLSBooster), "delayTimer");
         private static readonly FieldInfo? MaxTurnField = AccessTools.Field(typeof(Missile), "maxTurnRate");
         private static readonly FieldInfo? GLimitField = AccessTools.Field(typeof(Missile), "gLimit");
 
@@ -21,6 +22,8 @@ namespace Crosswim.Runtime
         internal static float ThrustN = 28000f;
         internal static float FuelMassKg = 180f;
         internal static float DryMassKg = 220f;
+        // Tube clear before VLS ignition (vanilla delayTimer).
+        internal static float DelayTimeS = 0.85f;
         // Missile.ApplyAero turn envelope (°/s + g).
         internal static float MaxTurnRateDegS = 45f;
         internal static float GLimit = 8f;
@@ -55,6 +58,7 @@ namespace Crosswim.Runtime
                 float thrust = ThrustField != null ? (float)ThrustField.GetValue(booster)! : 0f;
                 float fuel = FuelMassField != null ? (float)FuelMassField.GetValue(booster)! : 0f;
                 float dry = DryMassField != null ? (float)DryMassField.GetValue(booster)! : 0f;
+                float delay = DelayField != null ? (float)DelayField.GetValue(booster)! : 0f;
 
                 if (burn > 0.5f)
                     BurnTimeS = burn;
@@ -64,6 +68,8 @@ namespace Crosswim.Runtime
                     FuelMassKg = fuel;
                 if (dry > 1f)
                     DryMassKg = dry;
+                if (delay > 0.05f)
+                    DelayTimeS = delay;
 
                 Missile? body = def.unitPrefab.GetComponent<Missile>();
                 if (body == null)
@@ -78,9 +84,11 @@ namespace Crosswim.Runtime
                         GLimit = g;
                 }
 
+                CrosswimMotorFx.CaptureVlsBoosterFx(booster);
+
                 Captured = true;
                 CrosswimPlugin.ModLog?.LogInfo(
-                    $"CrosswimAshmVls from '{key}': burn={BurnTimeS:F2}s thrust={ThrustN:F0}N " +
+                    $"CrosswimAshmVls from '{key}': delay={DelayTimeS:F2}s burn={BurnTimeS:F2}s thrust={ThrustN:F0}N " +
                     $"(×{CrosswimConstants.VlsbThrustScale:F2}→{EffectiveThrustN:F0}) " +
                     $"fuel={FuelMassKg:F0} dry={DryMassKg:F0} turn={MaxTurnRateDegS:F0}°/s g={GLimit:F1}");
                 return;

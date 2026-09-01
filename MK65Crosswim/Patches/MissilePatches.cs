@@ -68,6 +68,15 @@ namespace Crosswim.Patches
         }
     }
 
+    [HarmonyPatch(typeof(Shockwave), "Start")]
+    internal static class ShockwaveStartCrosswimPatch
+    {
+        private static void Prefix(Shockwave __instance)
+        {
+            CrosswimWarheadFx.ForceLightYield(__instance);
+        }
+    }
+
     [HarmonyPatch(typeof(Missile), nameof(Missile.TakeDamage))]
     internal static class MissileTakeDamageCrosswimPatch
     {

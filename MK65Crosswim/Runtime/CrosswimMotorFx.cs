@@ -30,6 +30,53 @@ namespace Crosswim.Runtime
 
         private static GameObject? _hold;
         private static GameObject? _template;
+        private static GameObject? _vlsFxHold;
+        private static GameObject? _vlsFxTpl;
+        private static readonly FieldInfo? TrailLifetimeField =
+            typeof(TrailEmitter).GetField("emitLifetime", BindingFlags.Instance | BindingFlags.NonPublic);
+
+        internal static void CaptureVlsBoosterFx(VLSBooster booster)
+        {
+            if (booster == null || _vlsFxTpl != null)
+                return;
+
+            if (_vlsFxHold == null)
+            {
+                _vlsFxHold = new GameObject("Crosswim_VlsFxHold");
+                UnityEngine.Object.DontDestroyOnLoad(_vlsFxHold);
+                _vlsFxHold.SetActive(false);
+            }
+
+            _vlsFxTpl = UnityEngine.Object.Instantiate(booster.gameObject, _vlsFxHold.transform);
+            _vlsFxTpl.name = "CrosswimVlsBoosterTpl";
+            _vlsFxTpl.SetActive(false);
+
+            // Strip vanilla logic — we only want PS + TrailEmitter smoke.
+            VLSBooster? logic = _vlsFxTpl.GetComponent<VLSBooster>();
+            if (logic != null)
+                UnityEngine.Object.DestroyImmediate(logic);
+
+            ParticleSystem[] ps = _vlsFxTpl.GetComponentsInChildren<ParticleSystem>(true);
+            for (int i = 0; i < ps.Length; i++)
+            {
+                if (ps[i] == null)
+                    continue;
+                ps[i].Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+                ps[i].gameObject.SetActive(false);
+            }
+
+            TrailEmitter[] trails = _vlsFxTpl.GetComponentsInChildren<TrailEmitter>(true);
+            for (int i = 0; i < trails.Length; i++)
+            {
+                if (trails[i] == null)
+                    continue;
+                trails[i].rb = null!;
+                trails[i].enabled = false;
+            }
+
+            CrosswimPlugin.ModLog?.LogInfo(
+                $"CrosswimMotorFx VLS FX tpl: ps={ps.Length} trails={trails.Length}");
+        }
 
         internal static void Capture(Encyclopedia enc)
         {
@@ -100,7 +147,7 @@ namespace Crosswim.Runtime
 
         /// <summary>
         /// Kill vanilla AShM motor plume/thrust FX (Activate can race before Claim).
-        /// Keeps our CrosswimExhaust / CrosswimBooster instances.
+        /// Keeps our CrosswimExhaust / CrosswimBooster instances. Strips stock VLSBooster.
         /// </summary>
         internal static void SilenceStock(Missile missile)
         {
@@ -109,6 +156,15 @@ namespace Crosswim.Runtime
 
             missile.SetThrottle(0f);
             missile.boosterIsAttached = true;
+
+            VLSBooster[] stock = missile.GetComponentsInChildren<VLSBooster>(true);
+            for (int i = 0; i < stock.Length; i++)
+            {
+                if (stock[i] == null)
+                    continue;
+                stock[i].enabled = false;
+                UnityEngine.Object.Destroy(stock[i].gameObject);
+            }
 
             if (MotorsField?.GetValue(missile) is Array motors)
             {
@@ -130,11 +186,27 @@ namespace Crosswim.Runtime
                     continue;
                 string n = ps.gameObject.name ?? string.Empty;
                 if (n.StartsWith("CrosswimExhaust", StringComparison.OrdinalIgnoreCase) ||
-                    n.StartsWith("CrosswimBooster", StringComparison.OrdinalIgnoreCase))
+                    n.StartsWith("CrosswimBooster", StringComparison.OrdinalIgnoreCase) ||
+                    n.StartsWith("CrosswimVls", StringComparison.OrdinalIgnoreCase))
+                    continue;
+                // Don't kill trail PS parented under our booster clone.
+                if (IsUnderNamed(ps.transform, "CrosswimBooster"))
                     continue;
                 ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
                 ps.gameObject.SetActive(false);
             }
+        }
+
+        private static bool IsUnderNamed(Transform t, string rootName)
+        {
+            Transform? p = t;
+            while (p != null)
+            {
+                if (p.name.StartsWith(rootName, StringComparison.OrdinalIgnoreCase))
+                    return true;
+                p = p.parent;
+            }
+            return false;
         }
 
         internal static GameObject? SpawnBooster(Missile missile, Transform? visual)
@@ -142,7 +214,6 @@ namespace Crosswim.Runtime
             if (missile == null || visual == null)
                 return null;
 
-            // Prefer VLSB exhaust empties (activate if baked inactive).
             Transform? socket = FindOrActivateAlias(visual, CrosswimConstants.VlsbFxAliases);
             if (socket == null)
                 socket = FindOrActivateAlias(visual, CrosswimConstants.VlsbAliases);
@@ -150,6 +221,19 @@ namespace Crosswim.Runtime
             {
                 CrosswimPlugin.ModLog?.LogWarning("CrosswimMotorFx SpawnBooster: no VLSB socket");
                 return null;
+            }
+
+            // Prefer full AShM VLSBooster FX (flame + TrailEmitter smoke).
+            if (_vlsFxTpl != null)
+            {
+                GameObject vls = UnityEngine.Object.Instantiate(_vlsFxTpl);
+                vls.name = "CrosswimBooster";
+                PlaceVlsBoosterWorld(vls.transform, socket, missile);
+                vls.SetActive(true);
+                PrepBoosterIdle(vls);
+                CrosswimPlugin.ModLog?.LogInfo(
+                    $"CrosswimMotorFx booster VLS tpl at '{socket.name}' trails={vls.GetComponentsInChildren<TrailEmitter>(true).Length}");
+                return vls;
             }
 
             ParticleSystem? src = TemplatePs() ?? FindMotorExhaust(missile);
@@ -163,6 +247,7 @@ namespace Crosswim.Runtime
             go.name = "CrosswimBooster";
             PlaceBoosterOnSocket(go.transform, socket, missile);
             go.SetActive(true);
+            PrepBoosterIdle(go);
 
             ParticleSystem[] all = go.GetComponentsInChildren<ParticleSystem>(true);
             for (int i = 0; i < all.Length; i++)
@@ -171,20 +256,97 @@ namespace Crosswim.Runtime
                 if (ps == null)
                     continue;
                 TuneBoosterExhaust(ps);
+            }
+
+            CrosswimPlugin.ModLog?.LogInfo(
+                $"CrosswimMotorFx booster fallback at '{socket.name}' from '{src.name}'");
+            return go;
+        }
+
+        /// <summary>Parent to missile (scale 1) at socket world pose — FBX×100 empties warp trails.</summary>
+        private static void PlaceVlsBoosterWorld(Transform t, Transform socket, Missile missile)
+        {
+            t.SetParent(missile.transform, false);
+            Vector3 aft = -missile.transform.forward;
+            if (aft.sqrMagnitude < 1e-4f)
+                aft = -socket.forward;
+            // AShM VLS FX tip faces +Z on booster; we had aft LookRotation — flip 180°.
+            t.rotation = Quaternion.LookRotation(-aft, missile.transform.up);
+            t.position = socket.position + aft * CrosswimConstants.FxBoosterAftNudgeM;
+            t.localScale = Vector3.one;
+        }
+
+        private static void PrepBoosterIdle(GameObject go)
+        {
+            ParticleSystem[] all = go.GetComponentsInChildren<ParticleSystem>(true);
+            for (int i = 0; i < all.Length; i++)
+            {
+                if (all[i] == null)
+                    continue;
+                all[i].Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+                all[i].gameObject.SetActive(false);
+            }
+
+            TrailEmitter[] trails = go.GetComponentsInChildren<TrailEmitter>(true);
+            for (int i = 0; i < trails.Length; i++)
+            {
+                if (trails[i] == null)
+                    continue;
+                trails[i].rb = null!;
+                trails[i].enabled = false;
+            }
+        }
+
+        /// <summary>Ignite after tube delay — PS + TrailEmitter smoke like AShM Activate().</summary>
+        internal static void ActivateBooster(GameObject? fx, Missile missile)
+        {
+            if (fx == null || missile == null)
+                return;
+
+            Rigidbody? rb = missile.rb != null ? missile.rb : missile.GetComponent<Rigidbody>();
+            float trailLife = CrosswimAshmVls.BurnTimeS + 25f;
+
+            TrailEmitter[] trails = fx.GetComponentsInChildren<TrailEmitter>(true);
+            for (int i = 0; i < trails.Length; i++)
+            {
+                TrailEmitter te = trails[i];
+                if (te == null)
+                    continue;
+                te.rb = rb!;
+                TrailLifetimeField?.SetValue(te, trailLife);
+                te.StartTrail();
+            }
+
+            ParticleSystem[] all = fx.GetComponentsInChildren<ParticleSystem>(true);
+            for (int i = 0; i < all.Length; i++)
+            {
+                ParticleSystem ps = all[i];
+                if (ps == null)
+                    continue;
                 ps.gameObject.SetActive(true);
                 ps.Play(true);
             }
 
-            ParticleSystemRenderer[] rs = go.GetComponentsInChildren<ParticleSystemRenderer>(true);
+            ParticleSystemRenderer[] rs = fx.GetComponentsInChildren<ParticleSystemRenderer>(true);
             for (int i = 0; i < rs.Length; i++)
             {
                 if (rs[i] != null)
                     rs[i].enabled = true;
             }
 
-            CrosswimPlugin.ModLog?.LogInfo(
-                $"CrosswimMotorFx booster at '{socket.name}' from '{src.name}'");
-            return go;
+            Light[] lights = fx.GetComponentsInChildren<Light>(true);
+            for (int i = 0; i < lights.Length; i++)
+            {
+                if (lights[i] != null)
+                    lights[i].enabled = true;
+            }
+
+            AudioSource[] audio = fx.GetComponentsInChildren<AudioSource>(true);
+            for (int i = 0; i < audio.Length; i++)
+            {
+                if (audio[i] != null)
+                    audio[i].Play();
+            }
         }
 
         private static Transform? FindOrActivateAlias(Transform vis, string[] aliases)
@@ -230,7 +392,7 @@ namespace Crosswim.Runtime
             Vector3 aft = -missile.transform.forward;
             if (aft.sqrMagnitude < 1e-4f)
                 aft = -socket.forward;
-            t.rotation = Quaternion.LookRotation(aft, missile.transform.up);
+            t.rotation = Quaternion.LookRotation(-aft, missile.transform.up);
             t.position = socket.position + aft * CrosswimConstants.FxBoosterAftNudgeM;
         }
 
@@ -262,6 +424,16 @@ namespace Crosswim.Runtime
         {
             if (fx == null)
                 return;
+
+            TrailEmitter[] trails = fx.GetComponentsInChildren<TrailEmitter>(true);
+            for (int i = 0; i < trails.Length; i++)
+            {
+                if (trails[i] == null)
+                    continue;
+                trails[i].StopTrail();
+                trails[i].rb = null!;
+            }
+
             ParticleSystem[] all = fx.GetComponentsInChildren<ParticleSystem>(true);
             for (int i = 0; i < all.Length; i++)
             {

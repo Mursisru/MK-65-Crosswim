@@ -54,18 +54,26 @@ namespace Crosswim.Patches
     {
         private static void Prefix(GameObject missile, out bool __state)
         {
-            if (CrosswimSpawnGate.IsOurFlyPrefab(missile) && CrosswimSpawnGate.Pending > 0)
+            if (CrosswimSpawnGate.IsOurFlyPrefab(missile) &&
+                (CrosswimSpawnGate.Pending > 0 || CrosswimSpawnGate.HasRecentFire()))
                 CrosswimSpawnGate.BeginPrefabStamp(missile);
-            __state = CrosswimSpawnGate.TryBegin();
+            // Only our AShM shell — never consume pending / Claim Hydra bomb_glide1 spawns.
+            __state = CrosswimSpawnGate.IsOurFlyPrefab(missile) && CrosswimSpawnGate.TryBegin();
         }
 
-        private static void Postfix(bool __state, Unit target, Missile __result)
+        private static void Postfix(bool __state, GameObject missile, Unit target, Missile __result)
         {
             try
             {
                 CrosswimSpawnGate.EndPrefabStamp();
-                if (!__state || __result == null)
+                if (__result == null)
                     return;
+                bool rescue = !__state && CrosswimSpawnGate.ShouldRescueClaim(missile);
+                if (!__state && !rescue)
+                    return;
+                if (rescue)
+                    CrosswimPlugin.ModLog?.LogWarning(
+                        $"Crosswim rescue Claim on '{__result.name}' (AShM shell, pending race)");
                 CrosswimSpawnGate.Claim(__result, target);
                 CrosswimSpawnGate.FinishVisual(__result);
             }
@@ -155,6 +163,13 @@ namespace Crosswim.Patches
         {
             if (__instance == null || CrosswimBootstrap.Definition == null)
                 return true;
+
+            // Block silenced vanilla AShM/AGM VLS on Dynamo/Argus after Crosswim conversion.
+            Ship? ship = __instance.attachedUnit as Ship ?? __instance.GetComponentInParent<Ship>();
+            if (ship != null && ship.GetComponent<CrosswimShipDefense>() != null &&
+                CrosswimShipDefense.IsSilencedVanillaVls(__instance))
+                return false;
+
             if (__instance.missile != CrosswimBootstrap.Definition &&
                 __instance.GetComponent<CrosswimLauncherTag>() == null)
                 return true;
